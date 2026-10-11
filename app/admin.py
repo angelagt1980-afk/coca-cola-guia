@@ -12,6 +12,8 @@ import os
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
+from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 import gradio as gr
 import httpx
@@ -19,6 +21,7 @@ import httpx
 from . import admin_ai, llm
 from .config import Settings, settings
 from .corpus import parse_corpus
+from .index import corpus_hash
 from .ui import esc
 
 log = logging.getLogger("campusguia")
@@ -128,6 +131,92 @@ class Admin:
         log.info("corpus actualizado desde el panel: %d entradas", len(entradas))
         return f"Guardado y aplicado ahora ({len(entradas)} fichas). {publicar_github(texto, self.s)}"
 
+    # ---------- memoria y configuración ----------
+    def _fecha(self, ts: float) -> str:
+        try:
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(self.s.timezone)
+        except (ImportError, KeyError, ValueError, OSError):
+            tz = UTC
+        return datetime.fromtimestamp(ts, tz).strftime("%Y-%m-%d %H:%M")
+
+    def memoria(self, token: str, ip: str) -> str:
+        """Estado de lo que el servicio tiene cargado en memoria frente al archivo del catálogo."""
+        self.guard(token, ip)
+        sv, idx, s = self.get_service(), self.get_service().index, self.s
+        ruta, sin = s.corpus_path, s.synonyms_path
+        texto = ruta.read_text("utf-8") if ruta.exists() else ""
+        syn = sin.read_text("utf-8") if sin.exists() else ""
+        al_dia = corpus_hash(texto, syn) == idx.chash
+        estado = ("**al día**: el índice coincide con el archivo." if al_dia else
+                  "**desactualizado**: el archivo cambió desde la última indexación. Pulsa «Reindexar ahora».")
+        lin = [f"**Índice:** {len(idx.entries)} fichas · huella `{idx.chash[:12]}` · indexado {self._fecha(idx.built_at)}",
+               f"**Archivo `{esc(ruta.name)}`:** modificado {self._fecha(ruta.stat().st_mtime) if ruta.exists() else 'no existe'}",
+               f"**Estado:** {estado}", "",
+               (f"**Caché de respuestas:** {len(sv.cache)} de {s.cache_size} · **Reformulaciones guardadas:** {len(sv._reform)} · "
+               f"**Informes pendientes:** {len(sv.reportes)}"),
+               f"**Consultas desde el último arranque:** {sv.metrics.get('consultas', 0)}", "",
+               ("*Todo esto vive en la memoria del servidor y se reinicia cuando Render reinicia el servicio. "
+               "Vaciar la caché no reinicia los cupos de los usuarios.*")]
+        return "\n".join(lin)
+
+    def reindexar(self, token: str, ip: str) -> str:
+        self.guard(token, ip)
+        est = self.get_service().reindex()
+        log.info("reindexado manual desde el panel: %d entradas", est["entradas"])
+        return (f"Índice reconstruido desde `{esc(self.s.corpus_path.name)}`: {est['entradas']} fichas y "
+                f"{len(est['problemas'])} avisos. La caché se vació.")
+
+    def vaciar_cache(self, token: str, ip: str) -> str:
+        self.guard(token, ip)
+        n = self.get_service().vaciar_cache()
+        return f"Caché vaciada: {n['respuestas']} respuestas y {n['reformulaciones']} reformulaciones. Las próximas consultas se recalculan."
+
+    def configuracion(self, token: str, ip: str) -> str:
+        """Muestra la configuración activa SIN revelar secretos (solo si están configurados o no)."""
+        self.guard(token, ip)
+        s, sv = self.s, self.get_service()
+
+        def cfg(v: bool) -> str:
+            return "configurado" if v else "no configurado"
+        host = urlparse(s.llm_base_url).netloc if s.llm_base_url else "(por defecto del proveedor)"
+        grupos = {
+            "Modelo de IA": [("LLM_PROVIDER", s.llm_provider), ("MODEL_NAME", s.model_name), ("LLM_API_KEY", cfg(s.llm_api_key)),
+                             ("LLM_BASE_URL (host)", host), ("LLM_TIMEOUT_S", s.llm_timeout_s)],
+            "Límites por consulta": [("MAX_QUERY_CHARS", s.max_query_chars), ("TOP_K", s.top_k),
+                                     ("MAX_CONTEXT_CHARS", s.max_context_chars), ("MAX_OUTPUT_TOKENS", s.max_output_tokens)],
+            "Cupos": [("USER_TOKENS_DAY", s.user_tokens_day), ("USER_QUERIES_DAY", s.user_queries_day),
+                      ("REQ_PER_MIN", s.req_per_min), ("IP_MULTIPLIER", s.ip_multiplier),
+                      ("GLOBAL_TOKENS_DAY", s.global_tokens_day), ("REPORTS_PER_DAY", s.reports_per_day)],
+            "Recuperación y caché": [("MIN_SCORE", s.min_score), ("MIN_COVERAGE", s.min_coverage),
+                                     ("DIRECT_ENABLED", s.direct_enabled), ("DIRECT_COVERAGE", s.direct_coverage),
+                                     ("DIRECT_RATIO", s.direct_ratio), ("STALE_DAYS", s.stale_days),
+                                     ("CACHE_SIZE", s.cache_size), ("CACHE_TTL_S", s.cache_ttl_s)],
+            "Importación con IA": [("IMPORT_MAX_CHUNKS", s.import_max_chunks), ("IMPORT_CHUNK_CHARS", s.import_chunk_chars)],
+            "Publicación en GitHub": [("GITHUB_TOKEN", cfg(s.github_token)), ("GITHUB_REPO", s.github_repo or "(vacío)"),
+                                      ("GITHUB_BRANCH", s.github_branch), ("GITHUB_CORPUS_PATH", s.github_corpus_path)],
+            "Servicio": [("ADMIN_TOKEN", cfg(s.admin_token)), ("ID_SALT", "valor por defecto" if s.id_salt == "cambia-esto" else "personalizada"),
+                         ("TIMEZONE", s.timezone), ("REPORT_WEBHOOK_URL", cfg(s.report_webhook_url)),
+                         ("SHOW_ADMIN_LINK", s.show_admin_link), ("Catálogo", s.corpus_path.name)],
+        }
+        avisos = []
+        if not s.llm_api_key and s.llm_provider != "none":
+            avisos.append("`LLM_API_KEY` no está configurada: solo funcionan las respuestas directas.")
+        if s.id_salt == "cambia-esto":
+            avisos.append("`ID_SALT` usa el valor por defecto: define una cadena aleatoria propia.")
+        if len(s.admin_token) < 16:
+            avisos.append("`ADMIN_TOKEN` es corto: usa al menos 16 caracteres aleatorios.")
+        if not (s.github_token and s.github_repo):
+            avisos.append("GitHub no está configurado: los cambios del panel se perderán al reiniciar el servicio.")
+        out = []
+        if avisos:
+            out += ["### Recomendaciones", *[f"- {a}" for a in avisos], ""]
+        for titulo, filas in grupos.items():
+            out += [f"### {titulo}", "| Variable | Valor |", "|---|---|", *[f"| `{k}` | {esc(str(v))} |" for k, v in filas], ""]
+        out.append(f"*{len(sv.index.entries)} fichas cargadas. Para cambiar estos valores edita las variables de entorno en Render "
+                   "(Environment) y redespliega: este panel solo los muestra. Los secretos nunca se muestran.*")
+        return "\n".join(out)
+
     # ---------- IA (solo administrador) ----------
     def importar(self, ruta: str | None, token: str, ip: str) -> tuple[str, str]:
         self.guard(token, ip)
@@ -203,6 +292,15 @@ def build_admin_ui(get_service: Callable, s: Settings = settings) -> gr.Blocks:
                     b_validar = gr.Button("Validar", size="sm")
                     b_guardar = gr.Button("Guardar y publicar", variant="primary", size="sm")
                 estado = gr.Markdown()
+            with gr.Tab("Memoria"):
+                gr.Markdown("Lo que el servicio tiene cargado ahora. **Guardar y publicar** ya reindexa solo; usa estos botones "
+                            "si editaste el archivo por otra vía o quieres forzar un recálculo.")
+                memoria_md = gr.Markdown()
+                with gr.Row():
+                    b_mem = gr.Button("Actualizar estado", size="sm")
+                    b_reidx = gr.Button("Reindexar ahora", variant="primary", size="sm")
+                    b_cache = gr.Button("Vaciar caché", size="sm")
+                estado_mem = gr.Markdown()
             with gr.Tab("Importar con IA"):
                 gr.Markdown("Sube un reglamento, convocatoria o página guardada (PDF, HTML, TXT o MD, máx. 3 MB). "
                             "La IA propone fichas; **tú revisas** antes de publicar. Usa tokens una sola vez por documento.")
@@ -218,17 +316,23 @@ def build_admin_ui(get_service: Callable, s: Settings = settings) -> gr.Blocks:
                 prop2 = gr.Textbox(label="Borrador (editable)", lines=12, max_lines=40, elem_id="propuesta2")
                 res2 = gr.Markdown()
                 add2 = gr.Button("Agregar al editor del corpus", size="sm")
+            with gr.Tab("Configuración"):
+                gr.Markdown("Configuración activa (solo lectura, sin secretos).")
+                b_cfg = gr.Button("Actualizar", size="sm")
+                config_md = gr.Markdown()
 
         def on_login(token, request: gr.Request):
             try:
                 ad.guard(token, _ip(request))
             except PermissionError as e:
-                return (gr.update(), gr.update(), "", f"**{esc(str(e))}**", gr.update(), gr.update())
+                return (gr.update(), gr.update(), "", f"**{esc(str(e))}**", gr.update(), gr.update(), gr.update(), gr.update())
             ip = _ip(request)
-            return (gr.update(visible=False), gr.update(visible=True), token, "", ad.resumen(token, ip), ad.cargar(token, ip))
+            return (gr.update(visible=False), gr.update(visible=True), token, "", ad.resumen(token, ip), ad.cargar(token, ip),
+                    ad.memoria(token, ip), ad.configuracion(token, ip))
 
-        entrar.click(on_login, [tok], [login_box, panel, token_state, msg, resumen_md, editor], api_name=False)
-        tok.submit(on_login, [tok], [login_box, panel, token_state, msg, resumen_md, editor], api_name=False)
+        salidas_login = [login_box, panel, token_state, msg, resumen_md, editor, memoria_md, config_md]
+        entrar.click(on_login, [tok], salidas_login, api_name=False)
+        tok.submit(on_login, [tok], salidas_login, api_name=False)
         def h_resumen(t, request: gr.Request):
             return seguro(ad.resumen, t, request=request)
 
@@ -247,7 +351,25 @@ def build_admin_ui(get_service: Callable, s: Settings = settings) -> gr.Blocks:
         def h_borrador(t, request: gr.Request):
             return seguro(ad.borrador, t, request=request)
 
+        def h_memoria(t, request: gr.Request):
+            return seguro(ad.memoria, t, request=request)
+
+        def h_reindexar(t, request: gr.Request):
+            mensaje = seguro(ad.reindexar, t, request=request)
+            return mensaje, seguro(ad.memoria, t, request=request)
+
+        def h_cache(t, request: gr.Request):
+            mensaje = seguro(ad.vaciar_cache, t, request=request)
+            return mensaje, seguro(ad.memoria, t, request=request)
+
+        def h_config(t, request: gr.Request):
+            return seguro(ad.configuracion, t, request=request)
+
         refrescar.click(h_resumen, [token_state], [resumen_md], api_name=False)
+        b_mem.click(h_memoria, [token_state], [memoria_md], api_name=False)
+        b_reidx.click(h_reindexar, [token_state], [estado_mem, memoria_md], api_name=False)
+        b_cache.click(h_cache, [token_state], [estado_mem, memoria_md], api_name=False)
+        b_cfg.click(h_config, [token_state], [config_md], api_name=False)
         b_cargar.click(h_cargar, [token_state], [editor], api_name=False)
         b_validar.click(h_validar, [editor, token_state], [estado], api_name=False)
         b_guardar.click(h_guardar, [editor, token_state], [estado], api_name=False)

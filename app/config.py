@@ -65,6 +65,7 @@ class Settings:
     # --- operación / seguridad ---
     admin_token: str = field(default_factory=lambda: _env("ADMIN_TOKEN", ""))
     timezone: str = field(default_factory=lambda: _env("TIMEZONE", "America/Hermosillo"))
+    show_admin_link: bool = field(default_factory=lambda: _bool("SHOW_ADMIN_LINK", True))
     reports_per_day: int = field(default_factory=lambda: _int("REPORTS_PER_DAY", 5))
     report_webhook_url: str = field(default_factory=lambda: _env("REPORT_WEBHOOK_URL", ""))
     id_salt: str = field(default_factory=lambda: _env("ID_SALT", "cambia-esto"))

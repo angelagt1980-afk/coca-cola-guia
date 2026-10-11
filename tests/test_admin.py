@@ -145,12 +145,14 @@ def test_importar_y_borrador_desde_el_panel(ad, tmp_path, monkeypatch):
 def test_pantalla_de_acceso_del_panel(ad):
     _a, s, cfg = ad
     demo = build_admin_ui(lambda: s, cfg)
-    login = next(f for f in demo.fns.values() if len(f.inputs) == 1 and len(f.outputs) == 6)
+    login = next(f for f in demo.fns.values() if len(f.inputs) == 1 and len(f.outputs) == 8)
     mal = login.fn("mal", None)
     assert mal[1] == gr_update_vacio() and mal[2] == "" and "inválido" in mal[3]       # no revela el panel
     bien = login.fn(cfg.admin_token, None)
     assert bien[0]["visible"] is False and bien[1]["visible"] is True and bien[2] == cfg.admin_token
     assert "Entradas" in bien[4] and "### servicios-escolares" in bien[5]
+    assert "Índice" in bien[6] and "Modelo de IA" in bien[7]          # memoria y configuración se cargan al entrar
+    assert mal[6] == gr_update_vacio() and mal[7] == gr_update_vacio()
 
 
 def gr_update_vacio():
@@ -169,3 +171,75 @@ def test_boton_del_panel_sin_token_valido_da_error(ad):
 
 def test_modulo_exporta_css_admin():
     assert "#editor" in admin.ADMIN_CSS and json.dumps(admin.MAX_CORPUS_CHARS)
+
+
+SECRETOS = {"llm_api_key": "sk-ant-SECRETO-123", "admin_token": "token-de-prueba", "github_token": "ghp_SECRETO456",
+            "id_salt": "sal-SECRETA-789", "report_webhook_url": "https://hooks.example/servicios/T000/B000/WEBHOOKSECRETO"}
+
+
+def test_configuracion_nunca_revela_secretos(ad):
+    a, _, cfg = ad
+    for k, v in SECRETOS.items():
+        setattr(cfg, k, v)
+    cfg.github_repo = "usuario/repo"
+    cfg.llm_base_url = "https://proxy.interno.example/v1/ruta-secreta?k=1"
+    md = a.configuracion(TOK, IP)
+    for v in list(SECRETOS.values()) + ["ruta-secreta", "k=1"]:
+        assert v not in md, v
+    assert "`LLM_API_KEY` | configurado" in md and "`GITHUB_TOKEN` | configurado" in md and "`ADMIN_TOKEN` | configurado" in md
+    assert "`ID_SALT` | personalizada" in md and "proxy.interno.example" in md       # solo el host de la URL base
+    assert "`USER_QUERIES_DAY` | 15" in md and "`GLOBAL_TOKENS_DAY` | 300000" in md and "usuario/repo" in md
+    with pytest.raises(PermissionError):
+        a.configuracion("mal", IP)
+
+
+def test_configuracion_da_recomendaciones(ad):
+    a, _, cfg = ad
+    cfg.llm_provider, cfg.llm_api_key, cfg.id_salt, cfg.admin_token, cfg.github_token = "anthropic", "", "cambia-esto", "corto", ""
+    md = a.configuracion("corto", IP)
+    assert "Recomendaciones" in md and "LLM_API_KEY" in md and "ID_SALT" in md and "ADMIN_TOKEN" in md and "GitHub no está configurado" in md
+    assert "`ID_SALT` | valor por defecto" in md and "`LLM_API_KEY` | no configurado" in md
+
+
+def test_memoria_detecta_que_el_archivo_cambio_y_reindexar_lo_arregla(ad):
+    a, s, cfg = ad
+    assert "**al día**" in a.memoria(TOK, IP)
+    cfg.corpus_path.write_text(cfg.corpus_path.read_text("utf-8")
+                               + "\n\n### rectoria\nTITULO: Rectoría\nTAGS: rectoria, director\nACTUALIZADO: 2026-10-11\n--\nOficina de la rectoría.\n", "utf-8")
+    assert "rectoria" not in s._by_id and "desactualizado" in a.memoria(TOK, IP)     # el archivo cambió, la memoria no
+    msg = a.reindexar(TOK, IP)
+    assert "11 fichas" in msg and "rectoria" in s._by_id
+    assert "**al día**" in a.memoria(TOK, IP)
+    with pytest.raises(PermissionError):
+        a.reindexar("mal", IP)
+
+
+def test_vaciar_cache_desde_el_panel(ad):
+    a, s, _ = ad
+    s.responder("¿Cómo solicito una beca?", "todos", "ip", "c")                      # respuesta directa: queda en caché
+    s._reform[("x",)] = "beca"
+    assert len(s.cache) == 1
+    msg = a.vaciar_cache(TOK, IP)
+    assert "1 respuestas y 1 reformulaciones" in msg and not s.cache and not s._reform
+    assert s.metrics["cache_vaciada"] == 1
+    assert "Caché de respuestas:** 0 de" in a.memoria(TOK, IP)
+    with pytest.raises(PermissionError):
+        a.vaciar_cache("mal", IP)
+
+
+def test_botones_de_memoria_y_configuracion_del_panel(ad):
+    import gradio as gr
+    _, s, cfg = ad
+    demo = build_admin_ui(lambda: s, cfg)
+    por_nombre = {f.fn.__name__: f for f in demo.fns.values() if getattr(f.fn, "__name__", "") .startswith("h_")}
+    assert {"h_memoria", "h_reindexar", "h_cache", "h_config"} <= set(por_nombre)
+    msg, estado = por_nombre["h_cache"].fn(TOK, None)
+    assert "Caché vaciada" in msg and "Índice" in estado
+    msg, estado = por_nombre["h_reindexar"].fn(TOK, None)
+    assert "Índice reconstruido" in msg and "**al día**" in estado
+    assert "Modelo de IA" in por_nombre["h_config"].fn(TOK, None)
+    for nombre in ("h_memoria", "h_config"):
+        with pytest.raises(gr.Error):
+            por_nombre[nombre].fn("token-malo", None)
+    with pytest.raises(gr.Error):
+        por_nombre["h_cache"].fn("token-malo", None)

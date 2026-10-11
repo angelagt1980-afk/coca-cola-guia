@@ -119,6 +119,14 @@ class Service:
         self.cache.clear()
         log.info("corpus cargado: %d entradas", len(idx.entries))
 
+    def vaciar_cache(self) -> dict:
+        """Vacía la caché de respuestas y de reformulaciones (no toca cupos, informes ni el índice)."""
+        n = {"respuestas": len(self.cache), "reformulaciones": len(self._reform)}
+        self.cache.clear()
+        self._reform.clear()
+        self.metrics["cache_vaciada"] += 1
+        return n
+
     def reindex(self) -> dict:
         self.load(force_build=True)
         return self.estado()

@@ -130,6 +130,9 @@ footer {{ display:none !important; }}
   border-radius:50% !important; min-width:42px; min-height:42px; }}
 #msg button svg {{ color:{NAVY} !important; fill:{NAVY} !important; stroke:{NAVY} !important; }}
 
+#admin-link {{ text-align:center; font-size:.75rem; padding-bottom:.6rem; }}
+#admin-link a {{ color:{GRAY}; text-decoration:none; }}
+#admin-link a:hover {{ color:{ORANGE2}; text-decoration:underline; }}
 #uso, #legal {{ font-size:.78rem; color:{GRAY}; text-align:center; }}
 #uso p, #legal p {{ color:{GRAY}; margin:.15rem 0; }}
 button:focus-visible, textarea:focus-visible, a:focus-visible {{ outline:3px solid {ORANGE2} !important; outline-offset:2px; }}
@@ -252,6 +255,8 @@ def build_ui(get_service: Callable[[], object]) -> gr.Blocks:
                          autofocus=True)
         uso = gr.Markdown("", elem_id="uso")
         gr.Markdown(LEGAL, elem_id="legal")
+        if settings.show_admin_link:
+            gr.HTML('<a href="/admin/">Administración</a>', elem_id="admin-link")
 
         cid_state = gr.BrowserState(None)  # id anónimo (solo para los cupos de uso); la conversación NO se guarda
         sin_state = gr.State("")

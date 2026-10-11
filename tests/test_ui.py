@@ -154,3 +154,15 @@ def test_css_un_solo_marco_y_sin_barra_de_herramientas():
     assert "padding:14px 20px" in css and "#chat .message-content" in css
     assert ".icon-button-wrapper" in css and "display:none" in css      # sin botón de limpiar/copiar/compartir
     assert "#chat .bubble-wrap" in css and "padding:18px 16px 18px 4px" in css  # scroll separado con aire a la derecha
+
+
+def _ids(demo):
+    return {getattr(b, "elem_id", None) for b in demo.blocks.values()}
+
+
+def test_enlace_discreto_al_panel_visible_y_desactivable(cfg, monkeypatch):
+    demo = ui.build_ui(lambda: Service(cfg))
+    enlace = next(b for b in demo.blocks.values() if getattr(b, "elem_id", None) == "admin-link")
+    assert 'href="/admin/"' in enlace.value
+    monkeypatch.setattr(ui.settings, "show_admin_link", False)
+    assert "admin-link" not in _ids(ui.build_ui(lambda: Service(cfg)))

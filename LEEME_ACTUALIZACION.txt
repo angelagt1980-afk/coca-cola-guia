@@ -1,25 +1,18 @@
-ACTUALIZACIÓN v4 — GTU GUÍA: más inteligente, rápida y fácil de mantener
-========================================================================
+ACTUALIZACIÓN v5 — Panel de administración: Memoria, Configuración y acceso
+==========================================================================
 SUBIR (GitHub web): descomprime, "Add file" > "Upload files", arrastra las carpetas (sobrescribe). Commit; Render redespliega.
-Esta versión AGREGA una dependencia (pypdf, para leer PDF): Render la instala solo durante el build.
+No hay dependencias nuevas ni archivos que borrar.
 
-NUEVO PARA EL USUARIO
-- Respuestas al punto: "¿a qué hora abre la biblioteca?" responde solo el horario (0 tokens).
-- Preguntas de seguimiento: "¿y el teléfono?" usa el último tema de la conversación (0 tokens).
-- Segunda oportunidad: si no encuentra nada, la IA reformula la pregunta una vez (~100 tokens) y busca de nuevo.
-- Streaming: la respuesta aparece mientras se escribe; la pregunta se muestra al instante.
+CÓMO ENTRAR AL PANEL
+1) En Render > tu servicio > Environment: define ADMIN_TOKEN (texto largo y aleatorio, mínimo 16 caracteres).
+2) Abre  https://TU-APP.onrender.com/admin   o usa el enlace pequeño "Administración" al pie del chat.
 
-NUEVO PARA EL ADMINISTRADOR
-- Panel web en  https://TU-APP.onrender.com/admin  (usa tu ADMIN_TOKEN): resumen, editor del corpus,
-  importar PDF/HTML/TXT con IA, borradores desde los informes de "sin respuesta".
-- Publicar desde el panel en GitHub (opcional): en Render agrega
-    GITHUB_TOKEN  = token fine-grained con permiso "Contents: Read and write" SOLO sobre tu repositorio
-    GITHUB_REPO   = usuario/repositorio
-    (GITHUB_BRANCH=main y GITHUB_CORPUS_PATH=data/corpus.txt ya son los valores por defecto)
-  Sin esas variables, los cambios del panel se aplican al instante pero se pierden al reiniciar.
-- Consola: python -m app.importar archivo.pdf --dry-run   (costo estimado sin gastar tokens)
+NUEVO EN EL PANEL
+- Pestaña "Memoria": estado del índice frente al archivo (al día / desactualizado), caché e informes pendientes.
+    Botones: "Reindexar ahora" y "Vaciar caché".
+- Pestaña "Configuración": valores activos de solo lectura + recomendaciones. Nunca muestra secretos.
+- Al entrar se cargan Resumen, Corpus, Memoria y Configuración automáticamente.
 
-SEGURIDAD
-- /admin exige el token en CADA acción y se bloquea tras 5 intentos fallidos. Usa un ADMIN_TOKEN largo y aleatorio.
-- La IA nunca publica sola: propone y tú revisas. Teléfonos/correos/webs que no estén en el documento se eliminan
-  de la propuesta. Una ficha con [COMPLETAR] no se puede guardar.
+ENLACE EN LA PÁGINA PÚBLICA
+- Aparece un enlace discreto "Administración" al pie. Para ocultarlo: SHOW_ADMIN_LINK=false en Render
+  (el panel sigue disponible en /admin; la protección real es el token).

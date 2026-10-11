@@ -293,3 +293,11 @@ def test_respuesta_vacia_del_modelo_degrada(cfg):
     cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
     r = Service(cfg, stream_fn=_stream([])).responder(Q_LLM, "todos", "ip", "c")
     assert r["tipo"] == "directa"
+
+
+def test_vaciar_cache_no_toca_cupos_ni_informes(cfg):
+    s, _ = sin_llm_calls(cfg)
+    s.responder("¿Cómo solicito una beca?", "todos", "ip", "c")
+    s.reportar("algo que falta", "ip", "c")
+    n = s.vaciar_cache()
+    assert n == {"respuestas": 1, "reformulaciones": 0} and not s.cache and len(s.reportes) == 1

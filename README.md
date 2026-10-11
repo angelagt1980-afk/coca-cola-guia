@@ -143,6 +143,7 @@ Todo se controla con variables de entorno (ver `.env.example`). Las claves y tok
 | `IMPORT_MAX_CHUNKS` / `IMPORT_CHUNK_CHARS` | Límites de la importación asistida | `6` / `6000` |
 | `GITHUB_TOKEN`, `GITHUB_REPO` | Publicación del catálogo desde el panel | — |
 | `GITHUB_BRANCH`, `GITHUB_CORPUS_PATH` | Rama y ruta del catálogo | `main`, `data/corpus.txt` |
+| `SHOW_ADMIN_LINK` | Muestra un enlace discreto «Administración» al pie del chat; `false` lo oculta (el panel sigue en `/admin`) | `true` |
 
 > Los cupos viven en memoria y se reinician con el servicio. Configura además un tope de gasto en el panel del proveedor del modelo.
 
@@ -191,8 +192,10 @@ Recomendaciones: un tema por ficha, menos de 1,200 caracteres de texto, ubicacio
 
 - **Resumen:** temas más consultados, informes de «sin respuesta», fichas desactualizadas y avisos de validación.
 - **Corpus:** editor con validación y **Guardar y publicar**. El cambio se aplica de inmediato; con `GITHUB_TOKEN` y `GITHUB_REPO` se registra además un commit y Render redespliega.
+- **Memoria:** estado de lo cargado frente al archivo del catálogo (indica si el índice quedó desactualizado), caché e informes pendientes. Botones **Reindexar ahora** (recarga `corpus.txt` y reconstruye el índice) y **Vaciar caché** (respuestas y reformulaciones; no reinicia los cupos de los usuarios).
 - **Importar con IA:** carga de PDF, HTML, TXT o MD (máx. 3 MB). Propone fichas para revisión; los correos, teléfonos y URLs ausentes del documento original se eliminan de la propuesta.
 - **Borrador desde informes:** genera fichas con `[COMPLETAR]` a partir de las preguntas sin respuesta más frecuentes. No pueden publicarse hasta completarse con información oficial.
+- **Configuración:** valores activos de solo lectura con recomendaciones (clave de IA ausente, `ID_SALT` por defecto, token corto, GitHub sin configurar). Los secretos nunca se muestran: solo si están configurados. Para cambiarlos se editan las variables de entorno y se redespliega.
 
 El token de GitHub debe ser *fine-grained*, limitado a este repositorio y con permiso *Contents: Read and write*.
 
@@ -248,6 +251,7 @@ Los valores de `render.yaml` solo se aplican si el servicio se crea como Bluepri
 - Sin cuentas, sin base de datos y sin historial: la conversación no se guarda.
 - Los cupos usan un identificador anónimo del navegador y la IP, ambos con hash salado y solo en memoria.
 - La pregunta solo se almacena si el usuario pulsa «Informar que falta esta información»; se trunca y se enmascaran correos y teléfonos.
+- El panel de administración nunca muestra secretos; el enlace del chat es discreto y desactivable, pero la protección real es el token.
 - Los endpoints de administración usan comparación de token en tiempo constante, bloqueo tras 5 intentos fallidos en 10 minutos y se revalidan en cada acción del panel.
 - Todo el contenido del catálogo y de los usuarios se muestra escapado; la API incluye `Content-Security-Policy` y `X-Content-Type-Options`.
 - Las fichas se tratan como datos delimitados; correos y teléfonos no se envían al modelo.
