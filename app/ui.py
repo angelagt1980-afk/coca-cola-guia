@@ -1,8 +1,9 @@
-"""Interfaz Gradio (chat minimalista) con la marca del Grupo Tecnológico Universitario.
+"""Interfaz Gradio de GTU GUÍA: chat directo, modo oscuro con la paleta del Grupo Tecnológico Universitario.
 
 Paleta oficial: #FF5100 #FF7D00 (naranjas) · #06096F #046DB4 #234488 (azules) · #6E306F · #363636 #8B8B8B · #F5F5F5 #FFFFFF.
-Accesibilidad: el texto y los botones usan azul #234488 sobre blanco (contraste ≈ 9:1). Los naranjas se reservan
-para acentos decorativos porque #FF7D00 sobre blanco NO alcanza 4.5:1.
+Derivados para el modo oscuro: fondo #0B0E1F y superficies #131838/#1A2050 (azul marino muy oscuro, tono de #06096F).
+Contraste: texto #F5F5F5 sobre fondo oscuro (>15:1), burbuja del usuario blanco sobre #234488/#046DB4 (≥5:1),
+flecha de envío #06096F sobre naranja (≈7:1). Los enlaces usan un tinte claro de #046DB4 porque el original sobre oscuro no llega a 4.5:1.
 """
 from __future__ import annotations
 
@@ -13,69 +14,116 @@ from collections.abc import Callable
 
 import gradio as gr
 
-from .config import settings
+from .config import BASE, settings
 
 log = logging.getLogger("campusguia")
 
 ORANGE, ORANGE2 = "#FF5100", "#FF7D00"
 NAVY, BLUE, BRAND = "#06096F", "#046DB4", "#234488"
 PURPLE, INK, GRAY, SOFT, WHITE = "#6E306F", "#363636", "#8B8B8B", "#F5F5F5", "#FFFFFF"
+BG, SURFACE, SURFACE2, LINE, LINK = "#0B0E1F", "#131838", "#1A2050", "rgba(255,255,255,.10)", "#6DB6F0"
 
-SALUDO = ("Hola, soy **CampusGuía**. Pregúntame por trámites y servicios del campus: "
-          "dónde queda una oficina, qué documentos llevar, horarios o cómo contactar a alguien.")
-EJEMPLOS = ["¿Dónde entrego mis documentos de inscripción?", "Horario de la biblioteca",
-            "¿Cómo solicito una beca?", "No puedo conectarme al Wi-Fi"]
-PERFILES = [("Estudiante", "estudiante"), ("Profesor", "profesor"), ("Otro / prefiero no decir", "todos")]
-
-AVISO = ("CampusGuía es una guía de apoyo: para trámites importantes confirma con la oficina responsable. "
+SALUDO = "Hola, soy **GTU GUÍA**. Escribe tu duda sobre trámites o servicios del campus y te respondo al instante."
+LEGAL = ("GTU GUÍA es una guía de apoyo: confirma los trámites importantes con la oficina responsable. "
          "Tus preguntas se procesan con un servicio de IA de un tercero; no escribas datos personales ni de salud. "
          "En una emergencia sigue los protocolos oficiales del campus.")
+INFO_FALLBACK = "**GTU CAMPUS HERMOSILLO**\nGrupo Tecnológico Universitario"
+N_EJEMPLOS = 4
+
+
+def _both(d: dict) -> dict:
+    """El tema oscuro se aplica igual en claro y oscuro: si el navegador no activara .dark, nada queda ilegible."""
+    return {**d, **{k + "_dark": v for k, v in d.items()}}
+
 
 THEME = gr.themes.Base(
-    font=["system-ui", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
-    radius_size=gr.themes.sizes.radius_md,
-).set(
-    body_background_fill=WHITE, body_background_fill_dark=WHITE,
-    body_text_color=INK, body_text_color_dark=INK,
-    body_text_color_subdued=GRAY, body_text_color_subdued_dark="#5f5f5f",
-    background_fill_primary=WHITE, background_fill_primary_dark=WHITE,
-    background_fill_secondary=SOFT, background_fill_secondary_dark=SOFT,
-    block_background_fill=WHITE, block_background_fill_dark=WHITE,
-    block_border_color="#e1e1e1", block_border_color_dark="#e1e1e1",
-    block_label_text_color=INK, block_label_text_color_dark=INK,
-    input_background_fill=WHITE, input_background_fill_dark=WHITE,
-    input_border_color="#c9c9c9", input_border_color_dark="#c9c9c9",
-    input_border_color_focus=BRAND, input_border_color_focus_dark=BRAND,
-    button_primary_background_fill=BRAND, button_primary_background_fill_dark=BRAND,
-    button_primary_background_fill_hover=NAVY, button_primary_background_fill_hover_dark=NAVY,
-    button_primary_text_color=WHITE, button_primary_text_color_dark=WHITE,
-    button_primary_border_color=BRAND, button_primary_border_color_dark=BRAND,
-    button_secondary_background_fill=WHITE, button_secondary_background_fill_dark=WHITE,
-    button_secondary_background_fill_hover=SOFT, button_secondary_background_fill_hover_dark=SOFT,
-    button_secondary_text_color=BRAND, button_secondary_text_color_dark=BRAND,
-    button_secondary_border_color=BRAND, button_secondary_border_color_dark=BRAND,
-    link_text_color=BLUE, link_text_color_dark=BLUE,
-)
+    font=["Inter", "system-ui", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"],
+    radius_size=gr.themes.sizes.radius_lg,
+).set(**_both({
+    "body_background_fill": BG, "body_text_color": SOFT, "body_text_color_subdued": GRAY,
+    "background_fill_primary": BG, "background_fill_secondary": SURFACE,
+    "block_background_fill": "transparent", "block_border_color": "transparent", "block_border_width": "0px",
+    "block_shadow": "none", "block_label_text_color": GRAY, "block_title_text_color": SOFT,
+    "panel_background_fill": SURFACE, "border_color_primary": "rgba(255,255,255,.10)",
+    "input_background_fill": SURFACE, "input_border_color": "rgba(255,255,255,.10)", "input_border_color_focus": ORANGE2,
+    "input_placeholder_color": GRAY,
+    "button_primary_background_fill": ORANGE, "button_primary_background_fill_hover": ORANGE2,
+    "button_primary_text_color": NAVY, "button_primary_border_color": ORANGE,
+    "button_secondary_background_fill": SURFACE, "button_secondary_background_fill_hover": SURFACE2,
+    "button_secondary_text_color": SOFT, "button_secondary_border_color": "rgba(255,255,255,.10)",
+    "link_text_color": LINK,
+}))
 
 CSS = f"""
-.gradio-container {{ max-width: 860px !important; margin: 0 auto !important; }}
-#gtu-header {{ display:flex; align-items:center; gap:1rem; padding:.75rem 0 .9rem;
-  background:linear-gradient(90deg,{ORANGE},{ORANGE2}) bottom/100% 4px no-repeat; }}
-#gtu-header img {{ height:60px; width:auto; }}
-#gtu-header p {{ margin:0; color:{INK}; font-size:1.05rem; }}
-#gtu-header p b {{ color:{BRAND}; }}
-#aviso {{ font-size:.9rem; color:#5a5a5a; border-left:4px solid {ORANGE2}; padding:.1rem .75rem; margin:.5rem 0; }}
-#chat [data-testid="user"], #chat .message.user {{ background:{BRAND} !important; color:{WHITE} !important; border:0 !important; }}
+body, .gradio-container {{
+  background: radial-gradient(900px 480px at 0% -8%, rgba(35,68,136,.50), transparent 60%),
+              radial-gradient(700px 420px at 100% -5%, rgba(255,81,0,.15), transparent 60%), {BG} !important; }}
+.gradio-container {{ max-width: 760px !important; margin: 0 auto !important; padding: 0 12px !important; }}
+footer {{ display:none !important; }}
+
+#top {{ align-items:center !important; flex-wrap:nowrap !important; gap:.5rem; padding:.9rem 0 .8rem; position:relative;
+  border-bottom:1px solid {LINE}; }}
+#top::after {{ content:""; position:absolute; left:0; bottom:-1px; width:104px; height:2px;
+  background:linear-gradient(90deg,{ORANGE},{ORANGE2}); }}
+#brand {{ display:flex; align-items:center; gap:.9rem; }}
+#brand img {{ height:44px; width:auto; }}
+#brand .t {{ display:flex; flex-direction:column; line-height:1.15; }}
+#brand .t b {{ font-size:1.3rem; letter-spacing:.09em; color:{SOFT}; }}
+#brand .t b i {{ font-style:normal; color:{ORANGE2}; }}
+#brand .t span {{ font-size:.8rem; color:{GRAY}; }}
+
+#info-btn {{ flex:0 0 40px !important; min-width:40px !important; width:40px !important; height:40px; padding:0 !important;
+  border-radius:50% !important; background:transparent !important; color:{SOFT} !important;
+  border:1px solid rgba(255,255,255,.25) !important; font:italic 700 1.05rem Georgia, serif !important; }}
+#info-btn:hover {{ border-color:{ORANGE2} !important; color:{ORANGE2} !important; }}
+#info-panel {{ position:fixed; top:74px; right:14px; z-index:100; width:min(92vw,340px); padding:1rem 1.15rem !important;
+  background:{SURFACE2} !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.6); }}
+#info-panel, #info-panel * {{ color:{SOFT}; font-size:.92rem; line-height:1.5; }}
+#info-panel a {{ color:{LINK}; }}
+
+#chat {{ border:0 !important; background:transparent !important; }}
+#chat [data-testid="user"], #chat .message.user {{ background:linear-gradient(135deg,{BRAND},{BLUE}) !important; color:{WHITE} !important;
+  border:0 !important; border-radius:20px 20px 6px 20px !important; }}
 #chat [data-testid="user"] *, #chat .message.user * {{ color:{WHITE} !important; }}
-#chat [data-testid="bot"], #chat .message.bot {{ background:{SOFT} !important; color:{INK} !important;
-  border:0 !important; border-left:4px solid {ORANGE2} !important; }}
-#chat [data-testid="bot"] strong {{ color:{BRAND}; }}
-#chat a {{ color:{BLUE}; }}
-#uso {{ font-size:.85rem; color:#5a5a5a; text-align:right; }}
-button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {{ outline:3px solid {BRAND} !important; outline-offset:2px; }}
-footer {{ visibility:hidden; height:0; }}
+#chat [data-testid="bot"], #chat .message.bot {{ background:{SURFACE} !important; color:{SOFT} !important; border:1px solid {LINE} !important;
+  border-left:3px solid {ORANGE2} !important; border-radius:6px 20px 20px 20px !important; }}
+#chat [data-testid="bot"] *, #chat .message.bot * {{ color:{SOFT}; }}
+#chat [data-testid="bot"] strong {{ color:{WHITE}; }}
+#chat a {{ color:{LINK} !important; }}
+
+#chips {{ flex-wrap:wrap !important; gap:.5rem !important; }}
+.chip {{ flex:0 1 auto !important; min-width:0 !important; border-radius:999px !important; background:rgba(255,255,255,.04) !important;
+  border:1px solid rgba(255,255,255,.16) !important; color:{SOFT} !important; font-size:.9rem !important; padding:.45rem .95rem !important; }}
+.chip:hover {{ border-color:{ORANGE2} !important; background:rgba(255,125,0,.10) !important; }}
+
+#report-row {{ align-items:center !important; gap:.75rem; }}
+#report-btn {{ flex:0 0 auto !important; border-radius:999px !important; background:transparent !important; color:{ORANGE2} !important;
+  border:1px solid {ORANGE2} !important; font-size:.9rem !important; }}
+#report-btn:hover {{ background:rgba(255,125,0,.12) !important; }}
+#report-note {{ font-size:.8rem; color:{GRAY}; }}
+
+#msg {{ background:{SURFACE} !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:28px !important; padding:.25rem .4rem .25rem 1rem !important; }}
+#msg:focus-within {{ border-color:{ORANGE2} !important; box-shadow:0 0 0 3px rgba(255,125,0,.22); }}
+#msg textarea {{ background:transparent !important; border:0 !important; box-shadow:none !important; color:{SOFT} !important; font-size:1.02rem; }}
+#msg button {{ background:linear-gradient(135deg,{ORANGE},{ORANGE2}) !important; color:{NAVY} !important; border:0 !important;
+  border-radius:50% !important; min-width:42px; min-height:42px; }}
+#msg button svg {{ color:{NAVY} !important; fill:{NAVY} !important; stroke:{NAVY} !important; }}
+
+#uso, #legal {{ font-size:.78rem; color:{GRAY}; text-align:center; }}
+#uso p, #legal p {{ color:{GRAY}; margin:.15rem 0; }}
+button:focus-visible, textarea:focus-visible, a:focus-visible {{ outline:3px solid {ORANGE2} !important; outline-offset:2px; }}
 @media (prefers-reduced-motion: reduce) {{ * {{ animation:none !important; transition:none !important; }} }}
 """
+
+JS = """() => {
+  document.documentElement.lang = 'es';
+  document.body.classList.add('dark');
+  const label = (sel, text) => { const t = setInterval(() => { const e = document.querySelector(sel);
+    if (e) { e.setAttribute('aria-label', text); clearInterval(t); } }, 300); setTimeout(() => clearInterval(t), 8000); };
+  label('#info-btn', 'Información del campus');
+  label('#msg button', 'Enviar pregunta');
+}"""
 
 _MD = re.compile(r"([\\`*_{}\[\]<>()#+!|~])")
 
@@ -106,60 +154,97 @@ def format_reply(d: dict) -> str:
     return "\n\n".join(parts)
 
 
-def handle(msg: str, history: list, perfil: str, cid: str, ip: str, service) -> tuple[list, str]:
-    """Lógica del chat, independiente de Gradio (se prueba sin navegador). Devuelve (historial, texto de uso)."""
+def handle(msg: str, history: list, cid: str, ip: str, service) -> tuple[list, str, str]:
+    """Lógica del chat, independiente de Gradio (se prueba sin navegador).
+
+    Devuelve (historial, texto de uso, pregunta sin respuesta). La tercera es "" salvo que no hubiera información.
+    """
     history = list(history or [])
     msg = " ".join((msg or "").split())[: settings.max_query_chars]
     if not msg:
-        return history, ""
+        return history, "", ""
+    sin = ""
     if not service.quota.rate_ok(ip, cid):
         reply, uso = "Hiciste muchas consultas seguidas. Espera un minuto e inténtalo de nuevo.", ""
     else:
         try:
-            d = service.responder(msg, perfil, ip, cid)
+            d = service.responder(msg, "todos", ip, cid)
             reply = format_reply(d)
             r = d.get("uso", {})
             uso = f"Consultas con IA restantes hoy: {r['consultas']}" if "consultas" in r else ""
+            sin = msg if d.get("tipo") == "abstencion" else ""
         except Exception:  # nunca mostrar un error técnico al usuario
             log.exception("error inesperado en el chat")
             reply, uso = "Ocurrió un error. Inténtalo de nuevo en un momento.", ""
     history += [{"role": "user", "content": msg}, {"role": "assistant", "content": reply}]
-    return history, uso
+    return history, uso, sin
+
+
+def client_ip(request) -> str:
+    if request is None:
+        return "?"
+    xff = request.headers.get("x-forwarded-for", "") if request.headers else ""
+    return (xff.split(",")[0].strip() if xff else (request.client.host if request.client else "?"))[:64]
+
+
+def _info_md() -> str:
+    p = BASE / "data" / "info_campus.md"
+    return p.read_text("utf-8") if p.exists() else INFO_FALLBACK
 
 
 def build_ui(get_service: Callable[[], object]) -> gr.Blocks:
-    with gr.Blocks(title="CampusGuía · Grupo Tecnológico Universitario", analytics_enabled=False) as demo:
-        gr.HTML('<div id="gtu-header"><img src="/static/logo.png" alt="Grupo Tecnológico Universitario">'
-                "<p><b>CampusGuía</b><br>Guía de trámites y servicios del campus</p></div>")
-        gr.Markdown(AVISO, elem_id="aviso")
-        chat = gr.Chatbot(value=[{"role": "assistant", "content": SALUDO}], elem_id="chat", height=440,
-                          label="Conversación", show_label=False)
-        with gr.Row(equal_height=True):
-            perfil = gr.Dropdown(PERFILES, value="todos", label="Soy", scale=1, min_width=170, interactive=True)
-            msg = gr.Textbox(label="Tu pregunta", placeholder="Escribe tu pregunta y presiona Enter",
-                             max_lines=3, scale=4, max_length=settings.max_query_chars)
-        with gr.Row():
-            send = gr.Button("Preguntar", variant="primary", scale=2)
-            clear = gr.Button("Nueva conversación", variant="secondary", scale=1)
+    with gr.Blocks(title="GTU GUÍA · Grupo Tecnológico Universitario", analytics_enabled=False) as demo:
+        with gr.Row(elem_id="top"):
+            gr.HTML('<div id="brand"><img src="/static/logo_dark.png" alt="Grupo Tecnológico Universitario">'
+                    '<div class="t"><b>GTU <i>GUÍA</i></b><span>Trámites y servicios del campus</span></div></div>')
+            info_btn = gr.Button("i", elem_id="info-btn", scale=0)
+        with gr.Column(visible=False, elem_id="info-panel") as info_panel:
+            gr.Markdown(_info_md())
+
+        chat = gr.Chatbot(value=[{"role": "assistant", "content": SALUDO}], elem_id="chat", height="56vh",
+                          show_label=False, label="Conversación", buttons=[])
+        with gr.Row(elem_id="chips") as chips:
+            ejemplos = [gr.Button("", elem_classes="chip", visible=False, size="sm") for _ in range(N_EJEMPLOS)]
+        with gr.Row(visible=False, elem_id="report-row") as report_row:
+            report_btn = gr.Button("Informar que falta esta información", elem_id="report-btn", size="sm", scale=0)
+            gr.Markdown("Se envía solo tu pregunta, sin datos personales.", elem_id="report-note")
+        msg = gr.Textbox(elem_id="msg", container=False, show_label=False, label="Tu pregunta", lines=1, max_lines=4,
+                         placeholder="Escribe tu duda…", max_length=settings.max_query_chars, submit_btn=True,
+                         autofocus=True)
         uso = gr.Markdown("", elem_id="uso")
-        gr.Examples(EJEMPLOS, inputs=msg, label="Ejemplos de preguntas")
-        cid_state = gr.BrowserState(None)  # id anónimo persistente en el navegador (para los cupos de uso)
+        gr.Markdown(LEGAL, elem_id="legal")
 
-        def on_send(text, history, perfil_v, cid, request: gr.Request):
+        cid_state = gr.BrowserState(None)  # id anónimo (solo para los cupos de uso); la conversación NO se guarda
+        sin_state = gr.State("")
+        open_state = gr.State(False)
+
+        def on_send(text, history, cid, request: gr.Request):
             cid = cid or uuid.uuid4().hex
-            headers = request.headers if request else {}
-            xff = headers.get("x-forwarded-for", "") if headers else ""
-            ip = xff.split(",")[0].strip() if xff else (request.client.host if request and request.client else "?")
-            history, u = handle(text, history, perfil_v, cid, ip[:64], get_service())
-            return history, "", u, cid
+            history, u, sin = handle(text, history, cid, client_ip(request), get_service())
+            return (history, "", u, cid, gr.update(visible=False), gr.update(visible=bool(sin)), sin)
 
-        ins, outs = [msg, chat, perfil, cid_state], [chat, msg, uso, cid_state]
+        ins, outs = [msg, chat, cid_state], [chat, msg, uso, cid_state, chips, report_row, sin_state]
         msg.submit(on_send, ins, outs, api_name=False, concurrency_limit=8)
-        send.click(on_send, ins, outs, api_name=False, concurrency_limit=8)
-        clear.click(lambda: ([{"role": "assistant", "content": SALUDO}], "", ""), None, [chat, msg, uso], api_name=False)
+        for b in ejemplos:  # el valor del botón es la pregunta modelo
+            b.click(on_send, [b, chat, cid_state], outs, api_name=False, concurrency_limit=8)
 
-        def on_like(data: gr.LikeData):
-            get_service().metrics["util_si" if data.liked else "util_no"] += 1
-        chat.like(on_like, None, None, api_name=False)
+        def on_report(sin, history, cid, request: gr.Request):
+            _ok, texto = get_service().reportar(sin, client_ip(request), cid or "anon")
+            history = list(history or []) + [{"role": "assistant", "content": esc(texto)}]
+            return history, gr.update(visible=False), ""
+
+        report_btn.click(on_report, [sin_state, chat, cid_state], [chat, report_row, sin_state], api_name=False)
+
+        def on_info(opened):
+            return gr.update(visible=not opened), not opened, gr.update(value="✕" if not opened else "i")
+
+        info_btn.click(on_info, [open_state], [info_panel, open_state, info_btn], api_name=False)
+
+        def cargar_ejemplos():  # se ejecuta en cada visita: siempre una conversación nueva y ejemplos actualizados
+            ej = get_service().ejemplos(N_EJEMPLOS)
+            return [gr.update(value=ej[i], visible=True) if i < len(ej) else gr.update(visible=False)
+                    for i in range(N_EJEMPLOS)]
+
+        demo.load(cargar_ejemplos, None, ejemplos, api_name=False)
         demo.queue(max_size=32)
     return demo

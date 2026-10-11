@@ -40,3 +40,11 @@ def test_limite_consultas():
     for _ in range(2):
         q.spend("ip", "u", 10)
     assert q.can_spend("ip", "u", 10) == (False, "consultas")
+
+
+def test_limite_de_informes_por_dia():
+    q, t = mk(reports_per_day=2, ip_multiplier=1)
+    assert q.report_ok("ip", "u") and q.report_ok("ip", "u")
+    assert not q.report_ok("ip", "u")
+    t["now"] += 86400 * 2
+    assert q.report_ok("ip", "u")

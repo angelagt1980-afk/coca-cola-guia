@@ -21,6 +21,7 @@ class Quota:
         self._day = self._today()
         self.tokens: dict[str, int] = defaultdict(int)
         self.queries: dict[str, int] = defaultdict(int)
+        self.reports: dict[str, int] = defaultdict(int)
         self.global_tokens = 0
         self.global_queries = 0
         self._recent: dict[str, deque] = defaultdict(deque)
@@ -38,6 +39,7 @@ class Quota:
             self._day = d
             self.tokens.clear()
             self.queries.clear()
+            self.reports.clear()
             self.global_tokens = 0
             self.global_queries = 0
         if len(self._recent) > 20000:
@@ -85,6 +87,16 @@ class Quota:
         for key, _ in self._keys(ip, cid):
             self.tokens[key] += tokens_used
             self.queries[key] += 1
+
+    def report_ok(self, ip: str, cid: str) -> bool:
+        """Máximo de informes 'sin respuesta' por usuario y día (evita spam al administrador)."""
+        self._roll()
+        keys = self._keys(ip, cid)
+        if any(self.reports[k] >= self.s.reports_per_day * m for k, m in keys):
+            return False
+        for k, _ in keys:
+            self.reports[k] += 1
+        return True
 
     def remaining(self, ip: str, cid: str) -> dict:
         self._roll()

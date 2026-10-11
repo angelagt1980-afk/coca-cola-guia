@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .service import Service
-from .ui import CSS, THEME, build_ui
+from .ui import CSS, JS, THEME, build_ui
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("campusguia")
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="CampusGuía", version="2.0", lifespan=lifespan)
+app = FastAPI(title="GTU GUÍA", version="2.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 _fails: dict[str, deque] = defaultdict(deque)
 
@@ -130,13 +130,15 @@ def admin_estado(request: Request, authorization: str | None = Header(default=No
     return svc(request).estado()
 
 
-@app.get("/api/admin/brechas")
-def admin_brechas(request: Request, authorization: str | None = Header(default=None),
-                  x_admin_token: str | None = Header(default=None)):
+@app.get("/api/admin/reportes")
+def admin_reportes(request: Request, authorization: str | None = Header(default=None),
+                   x_admin_token: str | None = Header(default=None)):
     admin(request, authorization, x_admin_token)
-    return {"sin_respuesta": list(svc(request).gaps)}
+    sv = svc(request)
+    return {"reportes": sorted(sv.reportes.values(), key=lambda r: -r["veces"]),
+            "temas_populares": sv.popularidad.most_common(10)}
 
 
 # ---------------- interfaz Gradio (debe montarse DESPUÉS de definir las rutas de la API) ----------------
-app = gr.mount_gradio_app(app, build_ui(get_service), path="/", theme=THEME, css=CSS,
-                          favicon_path=str(STATIC / "favicon.png"))
+app = gr.mount_gradio_app(app, build_ui(get_service), path="/", theme=THEME, css=CSS, js=JS,
+                          favicon_path=str(STATIC / "favicon.png"), footer_links=[])

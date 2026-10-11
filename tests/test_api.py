@@ -20,8 +20,9 @@ def test_health(client):
 
 def test_home_gradio_y_logo(client):
     r = client.get("/")
-    assert r.status_code == 200 and "CampusGuía" in r.text
+    assert r.status_code == 200 and "GTU" in r.text
     assert client.get("/static/logo.png").status_code == 200
+    assert client.get("/static/logo_dark.png").status_code == 200
     assert client.get("/static/favicon.png").status_code == 200
 
 
@@ -58,3 +59,12 @@ def test_admin_bloquea_tras_intentos(client):
     for _ in range(5):
         client.get("/api/admin/estado", headers={"X-Admin-Token": "mal"})
     assert client.get("/api/admin/estado", headers={"X-Admin-Token": "token-de-prueba"}).status_code == 429
+
+
+def test_admin_reportes_y_populares(client):
+    h = {"X-Admin-Token": "token-de-prueba"}
+    client.post("/api/consulta", json={"texto": "wifi"})
+    client.app.state.service.reportar("necesito info del gimnasio", "ip", "c")
+    d = client.get("/api/admin/reportes", headers=h).json()
+    assert d["reportes"][0]["pregunta"] == "necesito info del gimnasio" and d["temas_populares"][0][0] == "soporte-ti"
+    assert client.get("/api/admin/reportes").status_code == 401

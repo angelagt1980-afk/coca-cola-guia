@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from .corpus import Entry
 from .textutil import tokens
 
-INDEX_VERSION = 2
+INDEX_VERSION = 3
 W_TITLE, W_TAGS, W_PUESTO, W_BODY = 3, 4, 2, 1
 K1, B = 1.5, 0.6
 TAG_BONUS = 0.5

@@ -5,13 +5,14 @@ import pytest
 
 from app import build_corpus, llm
 from app.config import settings
+from app.index import INDEX_VERSION
 
 
 def test_build_escribe_indice(tmp_path, monkeypatch, cfg):
     monkeypatch.setattr(settings, "index_path", tmp_path / "index.json")
     assert build_corpus.main([]) == 0
     d = json.loads((tmp_path / "index.json").read_text("utf-8"))
-    assert len(d["entries"]) >= 8 and d["version"] == 2
+    assert len(d["entries"]) >= 8 and d["version"] == INDEX_VERSION
 
 
 def test_check_no_escribe(tmp_path, monkeypatch):

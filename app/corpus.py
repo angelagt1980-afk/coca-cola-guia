@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 AUDIENCIAS = {"estudiante", "profesor", "todos"}
 CAMPOS = {"TITULO", "PUESTO", "AUDIENCIA", "TAGS", "RESPONSABLE", "CORREO", "TELEFONO",
-          "UBICACION", "HORARIO", "WEB", "ACTUALIZADO", "CATEGORIA"}
+          "UBICACION", "HORARIO", "WEB", "ACTUALIZADO", "CATEGORIA", "PREGUNTA"}
 _ID = re.compile(r"^[a-z0-9][a-z0-9\-]{1,60}$")
 _KV = re.compile(r"^([A-ZÁÉÍÓÚÑ_]+)\s*:\s*(.*)$")
 _MAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -28,6 +28,7 @@ class Entry:
     horario: str = ""
     web: str = ""
     actualizado: str = ""  # ISO yyyy-mm-dd o ""
+    pregunta: str = ""  # pregunta modelo que se muestra como ejemplo en el chat
     texto: str = ""
 
     def to_dict(self) -> dict:
@@ -139,7 +140,7 @@ def parse_corpus(text: str) -> tuple[list[Entry], list[Problem]]:
             responsable=header.get("RESPONSABLE", ""), correo=mail,
             telefono=header.get("TELEFONO", ""), ubicacion=header.get("UBICACION", ""),
             horario=header.get("HORARIO", ""), web=header.get("WEB", ""),
-            actualizado=act, texto=texto))
+            actualizado=act, pregunta=header.get("PREGUNTA", "")[:90], texto=texto))
     if not entries and not any(p.level == "error" for p in problems):
         problems.append(Problem("error", "-", "El corpus no contiene entradas ('### id')."))
     return entries, problems

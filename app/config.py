@@ -58,7 +58,8 @@ class Settings:
     # --- operación / seguridad ---
     admin_token: str = field(default_factory=lambda: _env("ADMIN_TOKEN", ""))
     timezone: str = field(default_factory=lambda: _env("TIMEZONE", "America/Hermosillo"))
-    log_unanswered: bool = field(default_factory=lambda: _bool("LOG_UNANSWERED", True))
+    reports_per_day: int = field(default_factory=lambda: _int("REPORTS_PER_DAY", 5))
+    report_webhook_url: str = field(default_factory=lambda: _env("REPORT_WEBHOOK_URL", ""))
     id_salt: str = field(default_factory=lambda: _env("ID_SALT", "cambia-esto"))
     emergency_text: str = field(default_factory=lambda: _env(
         "EMERGENCY_TEXT",
