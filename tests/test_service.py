@@ -27,13 +27,13 @@ def test_salud_deriva(cfg):
     assert r["tipo"] == "derivacion" and "médica" in r["respuesta"]
 
 
-def test_abstencion_sin_evidencia_no_llama_llm(cfg):
+def test_abstencion_sin_evidencia_solo_reformula(cfg):
     calls = []
     cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
-    s = Service(cfg, llm_fn=fake_llm(calls=calls))
+    s = Service(cfg, llm_fn=fake_llm(texto="zzz qqq", calls=calls))
     r = s.responder("cuanto cuesta un boleto de avion a Paris", "todos", "ip", "c")
-    assert r["tipo"] == "abstencion" and not calls
-    assert not s.reportes  # el texto de la pregunta solo se guarda si el usuario envía un informe
+    assert r["tipo"] == "abstencion" and not s.reportes
+    assert len(calls) == 1 and calls[0][2] == 40  # solo la reformulación barata, nunca la respuesta larga
 
 
 def test_sin_llm_responde_directo_con_ficha(cfg):
@@ -183,3 +183,113 @@ def test_respuestas_directas_siguen_con_limite_agotado(cfg):
     cfg.user_queries_day = 0
     r = con_llm(cfg).responder("horario biblioteca", "todos", "ip", "c")
     assert r["tipo"] == "directa" and not r.get("limite")  # lo gratuito no se bloquea
+
+
+def sin_llm_calls(cfg):
+    calls = []
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    return Service(cfg, llm_fn=fake_llm(calls=calls)), calls
+
+
+def test_enfocada_responde_solo_el_dato_y_cuesta_0(cfg):
+    s, calls = sin_llm_calls(cfg)
+    r = s.responder("¿A qué hora abre la biblioteca?", "todos", "ip", "c")
+    assert r["tipo"] == "directa" and r["enfocada"] and r["entrada_id"] == "biblioteca" and not calls
+    assert "Horario: Lunes a viernes, 8:00 a 20:00" in r["respuesta"] and "libros" not in r["respuesta"]
+    assert r["fichas"][0]["id"] == "biblioteca"
+
+
+def test_dato_no_registrado_no_se_inventa(cfg):
+    r = Service(cfg).responder("teléfono de la cafetería", "todos", "ip", "c")
+    assert "No tengo registrado: teléfono" in r["respuesta"] and "preguntar directamente" in r["respuesta"]
+
+
+def test_donde_entregar_documentos_responde_ubicacion(cfg):
+    r = Service(cfg).responder("¿Dónde entrego mis documentos de inscripción?", "todos", "ip", "c")
+    assert r["entrada_id"] == "servicios-escolares" and "Ubicación: Planta baja" in r["respuesta"]
+
+
+def test_seguimiento_usa_el_ultimo_tema(cfg):
+    s = Service(cfg)
+    r1 = s.responder("horario biblioteca", "todos", "ip", "c")
+    r2 = s.responder("¿y el teléfono?", "todos", "ip", "c", previo=r1["entrada_id"])
+    assert "662 000 0001 ext. 140" in r2["respuesta"] and r2["entrada_id"] == "biblioteca"
+    assert s.metrics["seguimientos"] == 1
+
+
+def test_seguimiento_no_se_aplica_si_nombra_otro_tema(cfg):
+    r = Service(cfg).responder("teléfono de becas", "todos", "ip", "c", previo="biblioteca")
+    assert r["entrada_id"] == "becas" and "662 000 0001 ext. 120" in r["respuesta"]
+
+
+def test_dato_sin_tema_ni_contexto_pide_aclaracion_sin_tokens(cfg):
+    s, calls = sin_llm_calls(cfg)
+    r = s.responder("¿a qué hora abre?", "todos", "ip", "c")
+    assert r["tipo"] == "aclaracion" and "De qué trámite" in r["respuesta"] and not calls and not r["fichas"]
+
+
+def test_segunda_oportunidad_encuentra_cachea_y_no_cuenta_consulta(cfg):
+    calls = []
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    s = Service(cfg, llm_fn=fake_llm(texto="beca solicitud apoyo economico", calls=calls, tin=60, tout=8))
+    q = "necesito dinero para pagar mi colegiatura"
+    assert not s._relevant(s.index.search(q, "todos", 3))  # la búsqueda local sola no la encuentra
+    r = s.responder(q, "todos", "ip", "c")
+    assert r["entrada_id"] == "becas" and r["tipo"] == "directa" and len(calls) == 1
+    assert s.metrics["reformuladas"] == 1 and r["uso"]["consultas"] == cfg.user_queries_day  # no gastó una consulta del día
+    assert r["uso"]["tokens"] == cfg.user_tokens_day - 68
+    r2 = s.responder(q, "todos", "ip", "c")
+    assert r2.get("desde_cache") and len(calls) == 1
+
+
+def test_reformulacion_se_recuerda_aunque_no_sirva(cfg):
+    calls = []
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    s = Service(cfg, llm_fn=fake_llm(texto="zzz qqq", calls=calls))
+    for _ in range(3):
+        assert s.responder("cuanto cuesta un boleto de avion a Paris", "todos", "ip", "c")["tipo"] == "abstencion"
+    assert len(calls) == 1  # no se vuelve a pagar la misma reformulación
+
+
+def test_reformulacion_respeta_el_cupo(cfg):
+    calls = []
+    cfg.llm_provider, cfg.llm_api_key, cfg.user_queries_day = "anthropic", "x", 0
+    s = Service(cfg, llm_fn=fake_llm(texto="beca", calls=calls))
+    assert s.responder("necesito dinero para pagar mi colegiatura", "todos", "ip", "c")["tipo"] == "abstencion"
+    assert not calls
+
+
+def _stream(deltas, usage=(700, 60), falla_al_final=False):
+    def f(s, system, user, max_tokens):
+        for d in deltas:
+            yield "delta", d
+        if falla_al_final:
+            raise llm.LLMError("corte")
+        yield "usage", usage
+    return f
+
+
+def test_streaming_emite_parciales_y_un_final(cfg):
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    s = Service(cfg, stream_fn=_stream(["Entrega tus ", "documentos en Servicios ", "Escolares [servicios-escolares]."]))
+    ev = list(s.responder_stream(Q_LLM, "todos", "ip", "c"))
+    kinds = [k for k, _ in ev]
+    assert kinds == ["parcial", "parcial", "parcial", "final"]
+    assert ev[0][1] == "Entrega tus " and ev[2][1].startswith("Entrega tus documentos en Servicios Escolares")
+    final = ev[-1][1]
+    assert final["tipo"] == "llm" and final["entrada_id"] == "servicios-escolares" and final["uso"]["tokens_consulta"] == 760
+
+
+def test_streaming_cortado_a_la_mitad_degrada_y_descuenta(cfg):
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    s = Service(cfg, stream_fn=_stream(["Entrega tus "], falla_al_final=True))
+    ev = list(s.responder_stream(Q_LLM, "todos", "ip", "c"))
+    assert ev[0][0] == "parcial" and ev[-1][0] == "final"
+    assert ev[-1][1]["tipo"] == "directa" and ev[-1][1]["fichas"] and "no está disponible" in " ".join(ev[-1][1]["advertencias"])
+    assert s.quota.remaining("ip", "c")["tokens"] < cfg.user_tokens_day  # se descontó lo gastado
+
+
+def test_respuesta_vacia_del_modelo_degrada(cfg):
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+    r = Service(cfg, stream_fn=_stream([])).responder(Q_LLM, "todos", "ip", "c")
+    assert r["tipo"] == "directa"

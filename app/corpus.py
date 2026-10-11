@@ -70,7 +70,7 @@ def _split_blocks(text: str) -> list[tuple[str, list[str]]]:
     return blocks
 
 
-def parse_corpus(text: str) -> tuple[list[Entry], list[Problem]]:
+def parse_corpus(text: str, permitir_pendientes: bool = False) -> tuple[list[Entry], list[Problem]]:
     entries: list[Entry] = []
     problems: list[Problem] = []
     seen: set[str] = set()
@@ -131,6 +131,8 @@ def parse_corpus(text: str) -> tuple[list[Entry], list[Problem]]:
         texto = "\n".join(body_lines).strip()
         if not texto:
             problems.append(Problem("aviso", eid, "Texto vacío."))
+        if not permitir_pendientes and "[COMPLETAR" in (texto + " ".join(header.values())):
+            problems.append(Problem("error", eid, "Contiene [COMPLETAR]: termina la ficha con información oficial antes de publicar."))
 
         if any(p.level == "error" for p in problems[start:]):
             continue

@@ -48,32 +48,61 @@ def test_handle_limite_de_ritmo(cfg):
 
 def test_handle_error_inesperado_no_se_filtra(cfg):
     s = Service(cfg)
-    s.responder = lambda *a, **k: 1 / 0
+
+    def roto(*a, **k):
+        raise ZeroDivisionError("simulado")
+        yield  # pragma: no cover
+
+    s.responder_stream = roto
     hist, _, _ = ui.handle("wifi", [], "c", "ip", s)
     assert "Ocurrió un error" in hist[-1]["content"] and "Zero" not in hist[-1]["content"]
 
 
-def _fn(demo, n_in):
-    return next(f for f in demo.fns.values() if len(f.inputs) == n_in and len(f.outputs) >= 4)
+def _fn(demo, n_in, n_out):
+    return next(f for f in demo.fns.values() if len(f.inputs) == n_in and len(f.outputs) == n_out)
 
 
-def test_evento_de_envio_de_gradio(cfg):
-    """Ejecuta el manejador real registrado en Gradio (sin request: usa IP '?')."""
+def test_evento_de_envio_streaming_y_seguimiento(cfg):
+    """Ejecuta el manejador real registrado en Gradio (es un generador; sin request usa IP '?')."""
     s = Service(cfg)
     demo = ui.build_ui(lambda: s)
-    send = _fn(demo, 3)
-    hist, caja, _uso, cid, chips, report, sin = send.fn("horario de la biblioteca", [], None, None)
+    send = _fn(demo, 4, 8)
+    ev = list(send.fn("horario de la biblioteca", [], None, None, None))
+    assert len(ev[0][0]) == 1 and ev[0][0][0]["role"] == "user"          # la pregunta aparece de inmediato
+    hist, caja, _uso, cid, chips, report, sin, ent = ev[-1]
     assert [m["role"] for m in hist] == ["user", "assistant"] and "8:00 a 20:00" in hist[-1]["content"]
-    assert caja == "" and cid and sin == ""
-    assert chips["visible"] is False and report["visible"] is False  # tras preguntar se ocultan los ejemplos
-    _h2, *_rest, report2, sin2 = send.fn("cuanto cuesta un vuelo a Paris", hist, cid, None)
-    assert report2["visible"] is True and sin2.startswith("cuanto cuesta")  # aparece el botón de informe
+    assert caja == "" and cid and sin == "" and ent == "biblioteca"
+    assert chips["visible"] is False and report["visible"] is False       # tras preguntar se ocultan los ejemplos
+    h2 = list(send.fn("¿y el teléfono?", hist, cid, ent, None))[-1][0]    # seguimiento con el tema recordado
+    assert "662 000 0001 ext. 140" in h2[-1]["content"]
+    ev3 = list(send.fn("cuanto cuesta un vuelo a Paris", h2, cid, ent, None))[-1]
+    assert ev3[5]["visible"] is True and ev3[6].startswith("cuanto cuesta")  # aparece el botón de informe
+
+
+def test_handle_stream_va_escribiendo_la_respuesta(cfg):
+    cfg.llm_provider, cfg.llm_api_key = "anthropic", "x"
+
+    def sf(s_, system, user, mx):
+        yield "delta", "Entrega tus documentos en "
+        yield "delta", "Servicios Escolares [servicios-escolares]."
+        yield "usage", (700, 60)
+    s = Service(cfg, stream_fn=sf)
+    ev = list(ui.handle_stream("¿Cómo entrego mis documentos de inscripción en el edificio?", [], "c", "ip", s))
+    assert [e[4] for e in ev] == [False, False, False, True]
+    assert ev[1][0][-1]["content"] == "Entrega tus documentos en "
+    assert "[" not in ev[2][0][-1]["content"].replace("\\[", "")        # sin marcadores de cita a medio escribir
+    assert ev[-1][3] == "servicios-escolares" and "Fuentes" not in ev[-1][0][-1]["content"]
+
+
+def test_parcial_quita_marcadores_incompletos():
+    assert ui._parcial("Ve a Servicios [servicios-esc") == "Ve a Servicios"
+    assert ui._parcial("Dato [becas]. Otro") == "Dato. Otro"
 
 
 def test_boton_de_informe_registra_y_se_oculta(cfg):
     s = Service(cfg)
     demo = ui.build_ui(lambda: s)
-    rep = next(f for f in demo.fns.values() if len(f.inputs) == 3 and len(f.outputs) == 3)
+    rep = _fn(demo, 3, 3)
     hist, report, sin = rep.fn("cuanto cuesta un vuelo a Paris", [], "cid", None)
     assert "Gracias" in hist[-1]["content"] and report["visible"] is False and sin == ""
     assert len(s.reportes) == 1

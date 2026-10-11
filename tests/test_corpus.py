@@ -40,3 +40,11 @@ def test_corpus_real_sin_errores():
     from app.config import BASE
     entries, problems = parse_corpus((BASE / "data" / "corpus.txt").read_text("utf-8"))
     assert entries and not [p for p in problems if p.level == "error"]
+
+
+def test_completar_bloquea_la_publicacion():
+    txt = "### a-uno\nTITULO: Uno\nTAGS: x\nACTUALIZADO: 2026-01-01\n--\n[COMPLETAR con la información oficial]\n"
+    entries, problems = parse_corpus(txt)
+    assert not entries and any("COMPLETAR" in str(p) for p in problems)
+    entries, _ = parse_corpus(txt, permitir_pendientes=True)
+    assert [e.id for e in entries] == ["a-uno"]

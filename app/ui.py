@@ -171,30 +171,52 @@ def format_reply(d: dict) -> str:
     return "\n\n".join(parts)
 
 
-def handle(msg: str, history: list, cid: str, ip: str, service) -> tuple[list, str, str]:
-    """Lógica del chat, independiente de Gradio (se prueba sin navegador).
+def _parcial(texto: str) -> str:
+    """Texto a medio escribir: sin marcadores de cita (completos o incompletos) y escapado."""
+    return esc(re.sub(r"\s*\[[a-z0-9\-]*(\]|$)", "", texto))
 
-    Devuelve (historial, texto de uso, pregunta sin respuesta). La tercera es "" salvo que no hubiera información.
+
+def handle_stream(msg: str, history: list, cid: str, ip: str, service, previo: str | None = None):
+    """Lógica del chat como generador (se prueba sin navegador).
+
+    Emite tuplas (historial, texto de uso, pregunta sin respuesta, último tema, es_final). La pregunta del usuario
+    aparece de inmediato y la respuesta se va escribiendo; la última tupla (es_final=True) trae la respuesta completa.
     """
     history = list(history or [])
     msg = " ".join((msg or "").split())[: settings.max_query_chars]
     if not msg:
-        return history, "", ""
-    sin = ""
+        yield history, "", "", previo, True
+        return
+    base = history + [{"role": "user", "content": msg}]
+    yield base, "", "", previo, False
+    sin, uso, entrada = "", "", previo
     if not service.quota.rate_ok(ip, cid):
-        reply, uso = MSG_RITMO, ""
+        reply = MSG_RITMO
     else:
         try:
-            d = service.responder(msg, "todos", ip, cid)
-            reply = format_reply(d)
-            r = d.get("uso", {})
+            final = {}
+            for kind, val in service.responder_stream(msg, "todos", ip, cid, previo):
+                if kind == "parcial":
+                    yield base + [{"role": "assistant", "content": _parcial(val)}], "", "", previo, False
+                else:
+                    final = val
+            reply = format_reply(final)
+            r = final.get("uso", {})
             uso = f"Consultas con IA restantes hoy: {r['consultas']}" if "consultas" in r else ""
-            sin = msg if d.get("tipo") == "abstencion" else ""
+            sin = msg if final.get("tipo") == "abstencion" else ""
+            entrada = final.get("entrada_id") or previo
         except Exception:  # nunca mostrar un error técnico al usuario
             log.exception("error inesperado en el chat")
-            reply, uso = "Ocurrió un error. Inténtalo de nuevo en un momento.", ""
-    history += [{"role": "user", "content": msg}, {"role": "assistant", "content": reply}]
-    return history, uso, sin
+            reply = "Ocurrió un error. Inténtalo de nuevo en un momento."
+    yield base + [{"role": "assistant", "content": reply}], uso, sin, entrada, True
+
+
+def handle(msg: str, history: list, cid: str, ip: str, service, previo: str | None = None) -> tuple[list, str, str]:
+    """Versión sin streaming: devuelve (historial, texto de uso, pregunta sin respuesta)."""
+    ultimo = None
+    for ultimo in handle_stream(msg, history, cid, ip, service, previo):
+        pass
+    return ultimo[0], ultimo[1], ultimo[2]
 
 
 def client_ip(request) -> str:
@@ -233,17 +255,24 @@ def build_ui(get_service: Callable[[], object]) -> gr.Blocks:
 
         cid_state = gr.BrowserState(None)  # id anónimo (solo para los cupos de uso); la conversación NO se guarda
         sin_state = gr.State("")
+        prev_state = gr.State(None)  # último tema consultado en ESTA conversación (se pierde al recargar)
         open_state = gr.State(False)
 
-        def on_send(text, history, cid, request: gr.Request):
+        def on_send(text, history, cid, previo, request: gr.Request):
             cid = cid or uuid.uuid4().hex
-            history, u, sin = handle(text, history, cid, client_ip(request), get_service())
-            return (history, "", u, cid, gr.update(visible=False), gr.update(visible=bool(sin)), sin)
+            n0 = len(history or [])
+            for h, u, sin, ent, final in handle_stream(text, history, cid, client_ip(request), get_service(), previo):
+                oculta = gr.update(visible=False) if len(h) > n0 else gr.update()
+                if final:
+                    yield (h, "", u, cid, oculta, gr.update(visible=bool(sin)), sin, ent)
+                else:
+                    yield (h, "", gr.update(), cid, oculta, gr.update(), gr.update(), gr.update())
 
-        ins, outs = [msg, chat, cid_state], [chat, msg, uso, cid_state, chips, report_row, sin_state]
+        ins = [msg, chat, cid_state, prev_state]
+        outs = [chat, msg, uso, cid_state, chips, report_row, sin_state, prev_state]
         msg.submit(on_send, ins, outs, api_name=False, concurrency_limit=8)
         for b in ejemplos:  # el valor del botón es la pregunta modelo
-            b.click(on_send, [b, chat, cid_state], outs, api_name=False, concurrency_limit=8)
+            b.click(on_send, [b, chat, cid_state, prev_state], outs, api_name=False, concurrency_limit=8)
 
         def on_report(sin, history, cid, request: gr.Request):
             _ok, texto = get_service().reportar(sin, client_ip(request), cid or "anon")

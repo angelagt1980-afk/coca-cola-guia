@@ -23,12 +23,20 @@ pytest -q --cov=app
 Con `LLM_PROVIDER=none` todo funciona **sin gastar un solo token** (respuestas directas con ficha).
 
 ## Cómo actualizar la información (administrador)
+**Opción A — Panel web `/admin` (recomendada).** Entra a `https://TU-APP.onrender.com/admin` con tu `ADMIN_TOKEN`.
+- *Resumen*: temas más consultados, informes de «sin respuesta», fichas desactualizadas y avisos.
+- *Corpus*: edita el texto completo, **Validar** y **Guardar y publicar**. Se aplica al instante en el servidor y, si configuraste `GITHUB_TOKEN` + `GITHUB_REPO`, se hace commit en GitHub (Render redespliega solo). Sin GitHub el cambio se pierde al reiniciar el servicio.
+- *Importar con IA*: sube un reglamento o convocatoria (PDF, HTML, TXT, MD; máx. 3 MB). La IA propone fichas; **tú revisas**. Los correos, teléfonos y webs que no aparezcan en el documento se eliminan de la propuesta. Gasta tokens una sola vez por documento (≈ 1,000–1,500 por fragmento de 6,000 caracteres; tope de `IMPORT_MAX_CHUNKS`).
+- *Borrador desde informes*: convierte las preguntas sin respuesta más frecuentes en fichas con `[COMPLETAR]`. **No se pueden publicar mientras tengan `[COMPLETAR]`**.
+- Crear el token de GitHub: Settings → Developer settings → Fine-grained tokens → solo este repositorio → permiso *Contents: Read and write*.
+
+**Opción B — A mano.**
 1. Abre `data/corpus.txt`, copia `data/plantilla_entrada.txt` al final y llena los campos.
-2. `python -m app.build_corpus` → valida (avisa de tags faltantes, fechas, correos, entradas largas u obsoletas).
-3. `git commit` y `git push` → Render redespliega solo. Para ver cambios sin redesplegar (solo si el archivo ya está en el servidor):
-   `curl -X POST -H "X-Admin-Token: $ADMIN_TOKEN" https://TU-APP.onrender.com/api/admin/reindex`
-4. `GET /api/admin/reportes` (con tu token) lista los informes de «sin respuesta» enviados por usuarios, agrupados y ordenados por frecuencia, más los temas más consultados = qué entradas faltan o conviene mejorar.
-5. Opcional: `python -m app.build_corpus --sugerir-tags` pide al LLM tags **solo para entradas sin TAGS** (~100 tokens c/u, con caché por hash); escribe `data/tags_sugeridos.txt` y **nunca modifica tu corpus**.
+2. `python -m app.build_corpus` valida (avisa de tags faltantes, fechas, correos, entradas largas u obsoletas).
+3. `git commit` y `git push` → Render redespliega solo.
+4. Por consola: `python -m app.importar reglamento.pdf --dry-run` (costo estimado, 0 tokens) y luego sin `--dry-run` para escribir `data/propuestas.txt`. `python -m app.build_corpus --sugerir-tags` sugiere tags solo para entradas sin TAGS.
+
+API (con tu token): `GET /api/admin/reportes` y `POST /api/admin/reindex`.
 
 ### Formato de una entrada
 ```
@@ -59,6 +67,15 @@ Texto libre, frases cortas, menos de 1,200 caracteres.
 | Global | tokens por día de todo el servicio | 300,000 |
 | Gratis | caché, derivaciones, abstenciones, respuestas directas | 0 tokens |
 Al agotarse el cupo, el usuario **sigue recibiendo la ficha** (degradación, no error). **Configura también un tope de gasto en el panel del proveedor**: los contadores viven en memoria y se reinician al reiniciar el servicio.
+
+## Cómo piensa la app (y cuánto cuesta cada nivel)
+| Nivel | Qué ocurre | Tokens |
+|---|---|---|
+| 0 | Emergencias/salud/legal → derivación fija · caché · aclaración si preguntan un dato sin decir de qué | 0 |
+| 1 | **Respuesta al punto**: «¿a qué hora abre la biblioteca?» devuelve solo el horario de la ficha · **seguimiento**: «¿y el teléfono?» usa el último tema de esa conversación · ficha directa para consultas claras | 0 |
+| 1b | **Segunda oportunidad**: si la búsqueda local no halla nada, la IA propone 4–8 palabras clave y se busca de nuevo (una vez por pregunta, con caché; no cuenta como consulta del día) | ≈ 100 |
+| 2 | Una llamada a la IA con ≤ 3 fichas recortadas, **en streaming** (el texto aparece mientras se escribe) | ≈ 860 máx. |
+Los datos (horarios, teléfonos, correos, ubicación) siempre salen del corpus, nunca los escribe el modelo. Si un dato no está registrado, la app lo dice en vez de inventarlo.
 
 ## Interfaz (Gradio) y marca
 Experiencia directa: abres la página, escribes, envías (flecha) y recibes respuesta. Cada visita es una conversación nueva; **no se guarda ningún historial**.

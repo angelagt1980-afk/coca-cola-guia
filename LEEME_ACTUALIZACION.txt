@@ -1,12 +1,25 @@
-ACTUALIZACIÓN v3 — GTU GUÍA
-===========================
-Subir: descomprime y en GitHub "Add file" > "Upload files", arrastra las carpetas (sobrescribe). Commit; Render redespliega.
+ACTUALIZACIÓN v4 — GTU GUÍA: más inteligente, rápida y fácil de mantener
+========================================================================
+SUBIR (GitHub web): descomprime, "Add file" > "Upload files", arrastra las carpetas (sobrescribe). Commit; Render redespliega.
+Esta versión AGREGA una dependencia (pypdf, para leer PDF): Render la instala solo durante el build.
 
-CAMBIOS
-1) Marco de las respuestas: ahora hay UN solo marco por mensaje, con relleno propio (más grande que el texto).
-   Antes se dibujaban dos marcos anidados que pisaban el texto.
-2) Ya no se escribe "Fuentes" ni los marcadores [1] en las respuestas.
-3) Mensaje respetuoso que explica el límite de consultas con IA: se muestra al agotarse el cupo personal o el global
-   (junto con la ficha más relevante), al enviar demasiado rápido y de forma permanente en el aviso inferior.
-4) Scroll del chat con aire a la derecha y barra fina; se oculta la barra de herramientas del chat
-   (limpiar / copiar / compartir), por lo que ya no queda pegada al scroll.
+NUEVO PARA EL USUARIO
+- Respuestas al punto: "¿a qué hora abre la biblioteca?" responde solo el horario (0 tokens).
+- Preguntas de seguimiento: "¿y el teléfono?" usa el último tema de la conversación (0 tokens).
+- Segunda oportunidad: si no encuentra nada, la IA reformula la pregunta una vez (~100 tokens) y busca de nuevo.
+- Streaming: la respuesta aparece mientras se escribe; la pregunta se muestra al instante.
+
+NUEVO PARA EL ADMINISTRADOR
+- Panel web en  https://TU-APP.onrender.com/admin  (usa tu ADMIN_TOKEN): resumen, editor del corpus,
+  importar PDF/HTML/TXT con IA, borradores desde los informes de "sin respuesta".
+- Publicar desde el panel en GitHub (opcional): en Render agrega
+    GITHUB_TOKEN  = token fine-grained con permiso "Contents: Read and write" SOLO sobre tu repositorio
+    GITHUB_REPO   = usuario/repositorio
+    (GITHUB_BRANCH=main y GITHUB_CORPUS_PATH=data/corpus.txt ya son los valores por defecto)
+  Sin esas variables, los cambios del panel se aplican al instante pero se pierden al reiniciar.
+- Consola: python -m app.importar archivo.pdf --dry-run   (costo estimado sin gastar tokens)
+
+SEGURIDAD
+- /admin exige el token en CADA acción y se bloquea tras 5 intentos fallidos. Usa un ADMIN_TOKEN largo y aleatorio.
+- La IA nunca publica sola: propone y tú revisas. Teléfonos/correos/webs que no estén en el documento se eliminan
+  de la propuesta. Una ficha con [COMPLETAR] no se puede guardar.

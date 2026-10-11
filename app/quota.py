@@ -80,13 +80,16 @@ class Quota:
                 return False, "tokens"
         return True, ""
 
-    def spend(self, ip: str, cid: str, tokens_used: int) -> None:
+    def spend(self, ip: str, cid: str, tokens_used: int, count_query: bool = True) -> None:
+        """Descuenta tokens. Las llamadas auxiliares (reformular) no cuentan como una consulta del día."""
         self._roll()
         self.global_tokens += tokens_used
-        self.global_queries += 1
+        if count_query:
+            self.global_queries += 1
         for key, _ in self._keys(ip, cid):
             self.tokens[key] += tokens_used
-            self.queries[key] += 1
+            if count_query:
+                self.queries[key] += 1
 
     def report_ok(self, ip: str, cid: str) -> bool:
         """Máximo de informes 'sin respuesta' por usuario y día (evita spam al administrador)."""

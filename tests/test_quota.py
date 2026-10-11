@@ -48,3 +48,12 @@ def test_limite_de_informes_por_dia():
     assert not q.report_ok("ip", "u")
     t["now"] += 86400 * 2
     assert q.report_ok("ip", "u")
+
+
+def test_gasto_auxiliar_no_cuenta_como_consulta():
+    q, _ = mk(user_queries_day=1, ip_multiplier=1)
+    q.spend("ip", "u", 80, count_query=False)
+    assert q.can_spend("ip", "u", 100)[0] and q.remaining("ip", "u")["consultas"] == 1
+    assert q.remaining("ip", "u")["tokens"] == q.s.user_tokens_day - 80
+    q.spend("ip", "u", 100)
+    assert q.can_spend("ip", "u", 10) == (False, "consultas")

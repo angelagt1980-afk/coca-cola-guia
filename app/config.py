@@ -55,6 +55,13 @@ class Settings:
     # --- caché ---
     cache_size: int = field(default_factory=lambda: _int("CACHE_SIZE", 500))
     cache_ttl_s: int = field(default_factory=lambda: _int("CACHE_TTL_S", 86400))
+    # --- administrador: importación con IA y publicación en GitHub (panel /admin) ---
+    import_max_chunks: int = field(default_factory=lambda: _int("IMPORT_MAX_CHUNKS", 6))
+    import_chunk_chars: int = field(default_factory=lambda: _int("IMPORT_CHUNK_CHARS", 6000))
+    github_token: str = field(default_factory=lambda: _env("GITHUB_TOKEN", ""))
+    github_repo: str = field(default_factory=lambda: _env("GITHUB_REPO", ""))  # "usuario/repositorio"
+    github_branch: str = field(default_factory=lambda: _env("GITHUB_BRANCH", "main"))
+    github_corpus_path: str = field(default_factory=lambda: _env("GITHUB_CORPUS_PATH", "data/corpus.txt"))
     # --- operación / seguridad ---
     admin_token: str = field(default_factory=lambda: _env("ADMIN_TOKEN", ""))
     timezone: str = field(default_factory=lambda: _env("TIMEZONE", "America/Hermosillo"))

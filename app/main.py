@@ -11,10 +11,11 @@ from typing import Literal
 
 import gradio as gr
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from .admin import ADMIN_CSS, build_admin_ui
 from .config import settings
 from .service import Service
 from .ui import CSS, JS, THEME, build_ui
@@ -140,5 +141,13 @@ def admin_reportes(request: Request, authorization: str | None = Header(default=
 
 
 # ---------------- interfaz Gradio (debe montarse DESPUÉS de definir las rutas de la API) ----------------
+# El panel /admin se monta ANTES: la interfaz pública en "/" captura cualquier otra ruta.
+@app.get("/admin", include_in_schema=False)
+def admin_sin_barra():
+    return RedirectResponse("/admin/")
+
+
+app = gr.mount_gradio_app(app, build_admin_ui(get_service), path="/admin", theme=THEME, css=CSS + ADMIN_CSS, js=JS,
+                          footer_links=[])
 app = gr.mount_gradio_app(app, build_ui(get_service), path="/", theme=THEME, css=CSS, js=JS,
                           favicon_path=str(STATIC / "favicon.png"), footer_links=[])

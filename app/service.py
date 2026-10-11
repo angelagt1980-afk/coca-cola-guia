@@ -1,9 +1,10 @@
 """Pipeline de consulta con coste de tokens mínimo.
 
 Niveles (de más barato a más caro):
-  0. Derivación / abstención / caché ........... 0 tokens
-  1. Respuesta directa (ficha + resumen) ....... 0 tokens
-  2. LLM con contexto recortado (1 sola llamada) ~ 700-1000 tokens
+  0. Derivación / aclaración / caché ........... 0 tokens
+  1. Respuesta directa o "al punto" (un dato) .. 0 tokens   (incluye preguntas de seguimiento)
+  1b. Reformular una pregunta sin resultados ... ~100 tokens (una vez por pregunta, con caché)
+  2. LLM con contexto recortado (1 llamada, en streaming) ~ 700-1000 tokens
 Las fichas de contacto SIEMPRE salen del corpus (nunca las escribe el modelo).
 """
 from __future__ import annotations
@@ -13,16 +14,18 @@ import logging
 import re
 import time
 from collections import Counter, OrderedDict
+from collections.abc import Iterator
 from datetime import date
 
 import httpx
 
-from . import llm, safety
+from . import intent, llm, safety
 from .config import Settings
 from .config import settings as default_settings
 from .corpus import Entry, Problem, parse_corpus, parse_synonyms
 from .index import Hit, Index, corpus_hash
 from .quota import Quota
+from .textutil import strip_accents
 from .textutil import tokens as _tokens
 
 log = logging.getLogger("campusguia")
@@ -45,9 +48,23 @@ MSG_LIMITE_GLOBAL = (
     "Gracias por usar GTU GUÍA. Hoy el servicio llegó al límite de uso de inteligencia artificial que tiene disponible "
     "para toda la comunidad, y se renueva cada día. Lamentamos la molestia y agradecemos mucho tu comprensión.")
 MSG_MIENTRAS = "Mientras tanto, esto puede ayudarte:"
+SYSTEM_REFORM = (
+    "Eres un buscador de trámites y servicios universitarios. Convierte la pregunta en 4 a 8 palabras clave en español, "
+    "sin acentos, en minúsculas y separadas por espacios, usando los términos formales de lo que se pide "
+    "(por ejemplo: dinero para estudiar -> beca apoyo economico). Responde solo las palabras.")
+REFORM_EST = 120  # tokens estimados de una reformulación
 MSG_ABSTENCION = ("No encontré esa información en los documentos del campus. "
                   "Te sugiero preguntar en la oficina correspondiente o en atención general.")
 _CITA = re.compile(r"\[([a-z0-9\-]+)\]")
+
+
+def _adaptar(llm_fn):
+    """Convierte una función de respuesta completa en un generador de streaming de un solo bloque."""
+    def f(s, system, user, max_tokens):
+        text, tin, tout = llm_fn(s, system, user, max_tokens)
+        yield "delta", text
+        yield "usage", (tin, tout)
+    return f
 
 
 def _clean(s: str) -> str:
@@ -64,9 +81,11 @@ def ficha(e: Entry, today: date | None = None, stale_days: int = 365) -> dict:
 
 
 class Service:
-    def __init__(self, s: Settings = default_settings, llm_fn=None):
+    def __init__(self, s: Settings = default_settings, llm_fn=None, stream_fn=None):
         self.s = s
         self.llm_fn = llm_fn or llm.complete
+        self.stream_fn = stream_fn or (_adaptar(llm_fn) if llm_fn else llm.stream)
+        self._reform: OrderedDict = OrderedDict()  # reformulaciones ya pagadas (también las que no sirvieron)
         self.quota = Quota(s)
         self.cache: OrderedDict = OrderedDict()
         self.reportes: OrderedDict = OrderedDict()  # informes explícitos de 'sin respuesta'
@@ -95,6 +114,8 @@ class Service:
         if idx is None:
             idx = Index.build(entries, parse_synonyms(syn), chash)
         self.index = idx
+        self._by_id = {e.id: e for e in idx.entries}
+        self._reform.clear()
         self.cache.clear()
         log.info("corpus cargado: %d entradas", len(idx.entries))
 
@@ -171,10 +192,10 @@ class Service:
 
     def _resp(self, tipo: str, texto: str, ip: str, cid: str, entries: list[Entry] | None = None,
               fuentes: list[Entry] | None = None, verificacion: str = "verificada",
-              advertencias: list[str] | None = None, tokens: int = 0) -> dict:
+              advertencias: list[str] | None = None, tokens: int = 0, entrada: str | None = None) -> dict:
         entries = entries or []
         return {
-            "tipo": tipo, "respuesta": texto,
+            "tipo": tipo, "respuesta": texto, "entrada_id": entrada,
             "fichas": [ficha(e, stale_days=self.s.stale_days) for e in entries],
             "fuentes": [{"n": i + 1, "id": e.id, "titulo": e.titulo, "actualizado": e.actualizado}
                         for i, e in enumerate(fuentes or [])],
@@ -193,7 +214,7 @@ class Service:
         if prefijo:  # límite de IA: se explica con respeto y se ofrece la ficha mientras tanto
             texto = f"{prefijo}\n\n{MSG_MIENTRAS}\n{texto}"
         extra = [h.entry for h in hits[1:2] if h.score >= 0.7 * hits[0].score]
-        resp = self._resp("directa", texto, ip, cid, [e] + extra, [e], advertencias=[aviso] if aviso else None)
+        resp = self._resp("directa", texto, ip, cid, [e] + extra, [e], advertencias=[aviso] if aviso else None, entrada=e.id)
         if prefijo:
             resp["limite"] = True
         return resp
@@ -240,20 +261,102 @@ class Service:
                 log.warning("no se pudo enviar el informe al webhook")
         return True, "Gracias. Tu informe se envió al equipo para agregar esta información."
 
+    # ---------- respuestas al punto, seguimiento y segunda oportunidad ----------
+    def _enfocada(self, e: Entry, attrs: list[str], ip: str, cid: str) -> dict:
+        """Responde solo el dato pedido (horario, teléfono…), tomado de la ficha: 0 tokens y sin inventar."""
+        lineas, faltan = [], []
+        for a in attrs:
+            etiqueta, campo, _ = intent.ATRIBUTOS[a]
+            valor = getattr(e, campo)
+            if valor:
+                lineas.append(f"{etiqueta}: {valor}")
+            else:
+                faltan.append(etiqueta.lower())
+        texto = e.titulo + ("\n" + "\n".join(lineas) if lineas else "")
+        if faltan:
+            texto += f"\nNo tengo registrado: {', '.join(faltan)}. Te sugiero preguntar directamente en la oficina."
+        resp = self._resp("directa", texto, ip, cid, [e], [e], entrada=e.id)
+        resp["enfocada"] = True
+        return resp
+
+    def _aclaracion(self, attrs: list[str], ip: str, cid: str) -> dict:
+        ej = self.ejemplos(1)
+        pista = f" Por ejemplo: «{ej[0]}»" if ej else ""
+        return self._resp("aclaracion", "¿De qué trámite o servicio quieres saber eso? Escríbelo y te lo busco." + pista,
+                          ip, cid, verificacion="no_aplica")
+
+    def _segunda_oportunidad(self, texto: str, terms: list[str], perfil: str, ip: str, cid: str) -> list[Hit]:
+        """Si la búsqueda local no halló nada, pide al modelo 4-8 palabras clave y busca de nuevo (una vez por pregunta)."""
+        key = tuple(sorted(terms))
+        if not key:
+            return []
+        if key in self._reform:
+            kw = self._reform[key]
+        else:
+            if not self.quota.can_spend(ip, cid, REFORM_EST)[0]:
+                return []
+            try:
+                raw, tin, tout = self.llm_fn(self.s, SYSTEM_REFORM, f"<pregunta>{_clean(texto)}</pregunta>", 40)
+            except llm.LLMError:
+                return []
+            used = (tin + tout) or REFORM_EST
+            self.quota.spend(ip, cid, used, count_query=False)
+            self.metrics["tokens"] += used
+            self.metrics["reformuladas"] += 1
+            kw = " ".join(re.sub(r"[^a-z0-9ñ ]", " ", strip_accents(raw.lower())).split())[:120]
+            self._reform[key] = kw
+            while len(self._reform) > 300:
+                self._reform.popitem(last=False)
+        hits = self.index.search(kw, perfil, self.s.top_k) if kw else []
+        return hits if self._relevant(hits) else []
+
     # ---------- entrada principal ----------
-    def responder(self, texto: str, perfil: str, ip: str, cid: str) -> dict:
+    def responder(self, texto: str, perfil: str, ip: str, cid: str, previo: str | None = None) -> dict:
+        final: dict = {}
+        for kind, val in self.responder_stream(texto, perfil, ip, cid, previo):
+            if kind == "final":
+                final = val
+        return final
+
+    def responder_stream(self, texto: str, perfil: str, ip: str, cid: str,
+                         previo: str | None = None) -> Iterator[tuple[str, object]]:
+        """Genera ("parcial", texto_acumulado) mientras el modelo escribe y ("final", respuesta) al terminar.
+
+        `previo` es el id de la última entrada consultada en esta conversación (para preguntas de seguimiento).
+        """
         self.metrics["consultas"] += 1
         texto = " ".join(texto.split())[: self.s.max_query_chars]
         tipo = safety.classify(texto)
         if tipo == "emergencia":
             self.metrics["derivaciones"] += 1
-            return self._resp("derivacion", self.s.emergency_text, ip, cid, verificacion="no_aplica")
+            yield "final", self._resp("derivacion", self.s.emergency_text, ip, cid, verificacion="no_aplica")
+            return
 
         hits = self.index.search(texto, perfil, self.s.top_k)
         if tipo:
             self.metrics["derivaciones"] += 1
             cards = [hits[0].entry] if self._relevant(hits) else []
-            return self._resp("derivacion", safety.MENSAJES[tipo], ip, cid, cards, verificacion="no_aplica")
+            yield "final", self._resp("derivacion", safety.MENSAJES[tipo], ip, cid, cards, verificacion="no_aplica")
+            return
+
+        # --- ¿pide un dato concreto? (horario, teléfono, ubicación…) ---
+        attrs, entidad = intent.analizar(texto)
+        if attrs:
+            if not entidad:  # no nombra el tema: seguimiento ("¿y el teléfono?") o pregunta ambigua
+                if previo and previo in self._by_id:
+                    self.metrics["seguimientos"] += 1
+                    self.popularidad[previo] += 1
+                    yield "final", self._enfocada(self._by_id[previo], attrs, ip, cid)
+                else:
+                    self.metrics["aclaraciones"] += 1
+                    yield "final", self._aclaracion(attrs, ip, cid)
+                return
+            h_ent = self.index.search(" ".join(entidad), perfil, self.s.top_k)
+            if self._relevant(h_ent) and (len(h_ent) == 1 or h_ent[0].score >= 1.2 * h_ent[1].score):
+                self.metrics["enfocadas"] += 1
+                self.popularidad[h_ent[0].entry.id] += 1
+                yield "final", self._enfocada(h_ent[0].entry, attrs, ip, cid)
+                return
 
         if self._relevant(hits):
             self.popularidad[hits[0].entry.id] += 1
@@ -265,22 +368,31 @@ class Service:
             out = dict(cached)
             out["uso"] = {"tokens_consulta": 0, **self.quota.remaining(ip, cid)}
             out["desde_cache"] = True
-            return out
+            yield "final", out
+            return
+
+        if not self._relevant(hits) and llm.available(self.s):
+            h2 = self._segunda_oportunidad(texto, terms, perfil, ip, cid)
+            if h2:
+                hits = h2
+                self.popularidad[hits[0].entry.id] += 1
 
         if not self._relevant(hits):
             self.metrics["abstenciones"] += 1
             adv = []
             if hits:
                 adv.append(f"Tema más cercano en el catálogo: «{hits[0].entry.titulo}» (no es seguro que sea lo que buscas).")
-            return self._resp("abstencion", MSG_ABSTENCION, ip, cid, verificacion="no_aplica", advertencias=adv)
+            yield "final", self._resp("abstencion", MSG_ABSTENCION, ip, cid, verificacion="no_aplica", advertencias=adv)
+            return
 
         if self._use_direct(hits):
             self.metrics["directas"] += 1
             resp = self._directa(hits, ip, cid)
             self._cache_put(ckey, resp)
-            return resp
+            yield "final", resp
+            return
 
-        # --- nivel 2: una sola llamada al LLM con contexto recortado ---
+        # --- nivel 2: una sola llamada al LLM, con el texto apareciendo mientras se genera ---
         user = (f"<perfil>{perfil}</perfil>\n<documentos>\n{self._context(hits)}\n</documentos>\n"
                 f"<pregunta>{_clean(texto)}</pregunta>")
         estimate = (len(SYSTEM) + len(user)) // 3 + self.s.max_output_tokens
@@ -288,13 +400,27 @@ class Service:
         if not ok:
             self.metrics["limite"] += 1
             prefijo = MSG_LIMITE_GLOBAL if why == "global" else MSG_LIMITE_USUARIO
-            return self._directa(hits, ip, cid, prefijo=prefijo)
+            yield "final", self._directa(hits, ip, cid, prefijo=prefijo)
+            return
+        buf: list[str] = []
+        tin = tout = 0
         try:
-            out, tin, tout = self.llm_fn(self.s, SYSTEM, user, self.s.max_output_tokens)
+            for kind, val in self.stream_fn(self.s, SYSTEM, user, self.s.max_output_tokens):
+                if kind == "delta":
+                    buf.append(val)
+                    yield "parcial", "".join(buf)
+                elif kind == "usage":
+                    tin, tout = val
+            if not "".join(buf).strip():
+                raise llm.LLMError("respuesta vacía")
         except llm.LLMError as e:
             self.metrics["llm_errores"] += 1
             log.warning("fallo LLM: %s", e)
-            return self._directa(hits, ip, cid, "El asistente de IA no está disponible; te muestro la ficha más relevante.")
+            if buf:  # ya se gastaron tokens: se descuentan aunque la respuesta no sirva
+                self.quota.spend(ip, cid, (tin + tout) or estimate)
+            yield "final", self._directa(hits, ip, cid, "El asistente de IA no está disponible; te muestro la ficha más relevante.")
+            return
+        out = "".join(buf).strip()
         used = (tin + tout) or estimate
         self.quota.spend(ip, cid, used)
         self.metrics["llm"] += 1
@@ -302,7 +428,8 @@ class Service:
 
         if re.sub(r"[^a-z ]", "", out.lower()[:20]).startswith("no encontre"):
             self.metrics["abstenciones"] += 1
-            return self._resp("abstencion", MSG_ABSTENCION, ip, cid, [hits[0].entry], verificacion="no_aplica", tokens=used)
+            yield "final", self._resp("abstencion", MSG_ABSTENCION, ip, cid, [hits[0].entry], verificacion="no_aplica", tokens=used)
+            return
 
         by_id = {h.entry.id: h.entry for h in hits}
         cited = [i for i in dict.fromkeys(_CITA.findall(out)) if i in by_id]
@@ -313,7 +440,7 @@ class Service:
         fuentes = [by_id[i] for i in cited]
         num = {e.id: n + 1 for n, e in enumerate(fuentes)}
         texto_out = _CITA.sub(lambda m: f"[{num[m.group(1)]}]" if m.group(1) in num else "", out).strip()
-        resp = self._resp("llm", texto_out, ip, cid, fuentes, fuentes, verif, adv, used)
+        resp = self._resp("llm", texto_out, ip, cid, fuentes, fuentes, verif, adv, used, entrada=fuentes[0].id)
         if verif == "verificada":
             self._cache_put(ckey, resp)
-        return resp
+        yield "final", resp

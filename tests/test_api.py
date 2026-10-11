@@ -68,3 +68,9 @@ def test_admin_reportes_y_populares(client):
     d = client.get("/api/admin/reportes", headers=h).json()
     assert d["reportes"][0]["pregunta"] == "necesito info del gimnasio" and d["temas_populares"][0][0] == "soporte-ti"
     assert client.get("/api/admin/reportes").status_code == 401
+
+
+def test_panel_admin_montado_y_redireccion(client):
+    r = client.get("/admin", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"].endswith("/admin/")
+    assert client.get("/admin/").status_code == 200

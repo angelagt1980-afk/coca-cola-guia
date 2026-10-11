@@ -16,3 +16,9 @@ services:
         sync: false
       - key: ID_SALT
         sync: false
+      - key: GITHUB_TOKEN        # opcional: permite publicar el corpus desde /admin
+        sync: false
+      - key: GITHUB_REPO
+        sync: false
+      - key: GITHUB_BRANCH
+        value: main
