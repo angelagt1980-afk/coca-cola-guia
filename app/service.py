@@ -36,6 +36,15 @@ SYSTEM = (
     "No escribas teléfonos ni correos (se muestran aparte).\n"
     "Tras cada dato cita el id del documento entre corchetes, p. ej. [becas]."
 )
+MSG_LIMITE_USUARIO = (
+    "Gracias por usar GTU GUÍA. Para que el servicio esté disponible para toda la comunidad y pueda mantenerse en el "
+    "tiempo, cada persona puede hacer un número limitado de consultas con inteligencia artificial al día, porque cada "
+    "una consume recursos compartidos. Hoy ya alcanzaste tu límite, que se renueva cada día. "
+    "Agradecemos mucho tu comprensión.")
+MSG_LIMITE_GLOBAL = (
+    "Gracias por usar GTU GUÍA. Hoy el servicio llegó al límite de uso de inteligencia artificial que tiene disponible "
+    "para toda la comunidad, y se renueva cada día. Lamentamos la molestia y agradecemos mucho tu comprensión.")
+MSG_MIENTRAS = "Mientras tanto, esto puede ayudarte:"
 MSG_ABSTENCION = ("No encontré esa información en los documentos del campus. "
                   "Te sugiero preguntar en la oficina correspondiente o en atención general.")
 _CITA = re.compile(r"\[([a-z0-9\-]+)\]")
@@ -174,16 +183,20 @@ class Service:
             "uso": {"tokens_consulta": tokens, **self.quota.remaining(ip, cid)},
         }
 
-    def _directa(self, hits: list[Hit], ip: str, cid: str, aviso: str | None = None) -> dict:
+    def _directa(self, hits: list[Hit], ip: str, cid: str, aviso: str | None = None, prefijo: str = "") -> dict:
         e = hits[0].entry
         resumen = _clean(e.texto)
         if len(resumen) > 600:
             cut = resumen[:600]
             resumen = cut[: cut.rfind("\n")] if "\n" in cut[200:] else cut.rsplit(" ", 1)[0] + "…"
         texto = f"{e.titulo}\n{resumen}" if resumen else e.titulo
+        if prefijo:  # límite de IA: se explica con respeto y se ofrece la ficha mientras tanto
+            texto = f"{prefijo}\n\n{MSG_MIENTRAS}\n{texto}"
         extra = [h.entry for h in hits[1:2] if h.score >= 0.7 * hits[0].score]
-        return self._resp("directa", texto, ip, cid, [e] + extra, [e],
-                          advertencias=[aviso] if aviso else None)
+        resp = self._resp("directa", texto, ip, cid, [e] + extra, [e], advertencias=[aviso] if aviso else None)
+        if prefijo:
+            resp["limite"] = True
+        return resp
 
     # ---------- ejemplos e informes ----------
     def ejemplos(self, n: int = 4) -> list[str]:
@@ -274,10 +287,8 @@ class Service:
         ok, why = self.quota.can_spend(ip, cid, estimate)
         if not ok:
             self.metrics["limite"] += 1
-            aviso = ("Se alcanzó el límite diario de consultas con IA. Te muestro la ficha más relevante; "
-                     "vuelve mañana para preguntas más detalladas." if why != "global" else
-                     "El servicio de IA alcanzó su límite diario. Te muestro la ficha más relevante.")
-            return self._directa(hits, ip, cid, aviso)
+            prefijo = MSG_LIMITE_GLOBAL if why == "global" else MSG_LIMITE_USUARIO
+            return self._directa(hits, ip, cid, prefijo=prefijo)
         try:
             out, tin, tout = self.llm_fn(self.s, SYSTEM, user, self.s.max_output_tokens)
         except llm.LLMError as e:
@@ -298,7 +309,7 @@ class Service:
         verif, adv = "verificada", []
         if not cited:
             cited, verif = [hits[0].entry.id], "no_verificada"
-            adv.append("La respuesta no citó fuente; revisa la ficha antes de actuar.")
+            adv.append("No pude confirmar esta respuesta con los documentos; verifica con la oficina responsable.")
         fuentes = [by_id[i] for i in cited]
         num = {e.id: n + 1 for n, e in enumerate(fuentes)}
         texto_out = _CITA.sub(lambda m: f"[{num[m.group(1)]}]" if m.group(1) in num else "", out).strip()

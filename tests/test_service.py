@@ -76,7 +76,10 @@ def test_limite_diario_degrada_a_ficha(cfg):
     s = con_llm(cfg)
     s.responder(Q_LLM, "estudiante", "ip", "c")
     r = s.responder("como solicito una beca en el edificio", "estudiante", "ip", "c")
-    assert r["tipo"] == "directa" and "límite" in " ".join(r["advertencias"])
+    assert r["tipo"] == "directa" and r["limite"] is True
+    txt = r["respuesta"]
+    assert "límite" in txt and "comunidad" in txt and "comprensión" in txt and "Mientras tanto" in txt
+    assert "Becas" in txt  # mientras tanto se muestra la ficha relevante
 
 
 def test_fallo_llm_degrada(cfg):
@@ -166,3 +169,17 @@ def test_cada_ejemplo_recupera_su_propia_entrada(cfg):
         if e.pregunta:
             hits = s.index.search(e.pregunta, "todos", 1)
             assert hits and hits[0].entry.id == e.id and s._relevant(hits), e.id
+
+
+def test_limite_global_usa_mensaje_propio_y_respetuoso(cfg):
+    cfg.global_tokens_day = 10
+    s = con_llm(cfg)
+    r = s.responder("como solicito una beca en el edificio", "todos", "ip", "c")
+    assert r["limite"] is True and "toda la comunidad" in r["respuesta"] and "Lamentamos" in r["respuesta"]
+    assert "alcanzaste tu límite" not in r["respuesta"]
+
+
+def test_respuestas_directas_siguen_con_limite_agotado(cfg):
+    cfg.user_queries_day = 0
+    r = con_llm(cfg).responder("horario biblioteca", "todos", "ip", "c")
+    assert r["tipo"] == "directa" and not r.get("limite")  # lo gratuito no se bloquea

@@ -43,7 +43,7 @@ def test_handle_limite_de_ritmo(cfg):
     last = []
     for _ in range(4):
         last, _, _ = ui.handle("wifi", last, "c", "ip", s)
-    assert "muchas consultas" in last[-1]["content"]
+    assert "Gracias por tu paciencia" in last[-1]["content"]
 
 
 def test_handle_error_inesperado_no_se_filtra(cfg):
@@ -95,3 +95,33 @@ def test_panel_de_informacion_oculto_y_con_datos(cfg):
     abre = toggle.fn(False)
     assert abre[0]["visible"] is True and abre[1] is True
     assert toggle.fn(True)[0]["visible"] is False
+
+
+def test_no_se_muestran_fuentes_ni_marcadores_de_cita():
+    d = {"respuesta": "Entrega tus documentos en Servicios Escolares [1]. Lleva tu credencial [2].", "fichas": [],
+         "fuentes": [{"n": 1, "id": "a", "titulo": "Servicios Escolares", "actualizado": "2026-08-15"}], "advertencias": []}
+    md = ui.format_reply(d)
+    assert "Fuentes" not in md and "[1]" not in md and "\\[1\\]" not in md and "[2]" not in md
+    assert "Servicios Escolares" in md and "credencial" in md
+
+
+def test_mensaje_de_ritmo_es_respetuoso(cfg):
+    cfg.req_per_min = 1
+    s = Service(cfg)
+    h, _, _ = ui.handle("wifi", [], "c", "ip", s)
+    h, _, _ = ui.handle("wifi", h, "c", "ip", s)
+    assert "Gracias por tu paciencia" in h[-1]["content"] and "espera un minuto" in h[-1]["content"]
+
+
+def test_aviso_de_limite_visible_en_la_pagina():
+    assert "límite diario de consultas con IA" in ui.LEGAL
+
+
+def test_css_un_solo_marco_y_sin_barra_de_herramientas():
+    css = ui.CSS
+    # el marco con borde naranja se aplica SOLO a .message.bot (no también a [data-testid]), para que no se dupliquen
+    marcos = [ln for ln in css.splitlines() if "border-left:3px" in ln or "border-left: 3px" in ln]
+    assert len(marcos) == 1 and ".message.bot" in marcos[0]
+    assert "padding:14px 20px" in css and "#chat .message-content" in css
+    assert ".icon-button-wrapper" in css and "display:none" in css      # sin botón de limpiar/copiar/compartir
+    assert "#chat .bubble-wrap" in css and "padding:18px 16px 18px 4px" in css  # scroll separado con aire a la derecha

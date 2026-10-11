@@ -26,7 +26,10 @@ BG, SURFACE, SURFACE2, LINE, LINK = "#0B0E1F", "#131838", "#1A2050", "rgba(255,2
 SALUDO = "Hola, soy **GTU GUÍA**. Escribe tu duda sobre trámites o servicios del campus y te respondo al instante."
 LEGAL = ("GTU GUÍA es una guía de apoyo: confirma los trámites importantes con la oficina responsable. "
          "Tus preguntas se procesan con un servicio de IA de un tercero; no escribas datos personales ni de salud. "
+         "Para que el servicio llegue a toda la comunidad, cada persona tiene un límite diario de consultas con IA. "
          "En una emergencia sigue los protocolos oficiales del campus.")
+MSG_RITMO = ("Estás enviando consultas muy rápido. Para que el servicio funcione bien para todas las personas, "
+             "espera un minuto antes de continuar. ¡Gracias por tu paciencia!")
 INFO_FALLBACK = "**GTU CAMPUS HERMOSILLO**\nGrupo Tecnológico Universitario"
 N_EJEMPLOS = 4
 
@@ -83,13 +86,30 @@ footer {{ display:none !important; }}
 #info-panel a {{ color:{LINK}; }}
 
 #chat {{ border:0 !important; background:transparent !important; }}
-#chat [data-testid="user"], #chat .message.user {{ background:linear-gradient(135deg,{BRAND},{BLUE}) !important; color:{WHITE} !important;
-  border:0 !important; border-radius:20px 20px 6px 20px !important; }}
-#chat [data-testid="user"] *, #chat .message.user * {{ color:{WHITE} !important; }}
-#chat [data-testid="bot"], #chat .message.bot {{ background:{SURFACE} !important; color:{SOFT} !important; border:1px solid {LINE} !important;
-  border-left:3px solid {ORANGE2} !important; border-radius:6px 20px 20px 20px !important; }}
-#chat [data-testid="bot"] *, #chat .message.bot * {{ color:{SOFT}; }}
-#chat [data-testid="bot"] strong {{ color:{WHITE}; }}
+/* El scroll del chat vive en .bubble-wrap: se le da aire a la derecha y una barra fina y discreta. */
+#chat .bubble-wrap {{ padding:18px 16px 18px 4px !important; scrollbar-width:thin; scrollbar-color:{BRAND} transparent; }}
+#chat .bubble-wrap::-webkit-scrollbar {{ width:8px; }}
+#chat .bubble-wrap::-webkit-scrollbar-track {{ background:transparent; }}
+#chat .bubble-wrap::-webkit-scrollbar-thumb {{ background:{BRAND}; border-radius:8px; }}
+/* Sin barra de herramientas del chat (limpiar / copiar todo / compartir): cada visita ya es una conversación nueva. */
+#chat .icon-button-wrapper, #chat .icon-buttons {{ display:none !important; }}
+#chat .message-buttons {{ display:none !important; }}
+
+/* UN solo marco por mensaje (.message.bot / .message.user) con relleno propio: el marco queda más grande que el texto.
+   El elemento interior [data-testid] y .message-content NO llevan borde, fondo ni relleno, para que no se dupliquen. */
+#chat .message.bot, #chat .message.user {{ padding:14px 20px !important; line-height:1.6; }}
+#chat .message.bot {{ background:{SURFACE} !important; border:1px solid {LINE} !important; border-left:3px solid {ORANGE2} !important;
+  border-radius:6px 20px 20px 20px !important; box-shadow:none !important; }}
+#chat .message.user {{ background:linear-gradient(135deg,{BRAND},{BLUE}) !important; border:0 !important;
+  border-radius:20px 20px 6px 20px !important; box-shadow:none !important; }}
+#chat [data-testid="bot"], #chat [data-testid="user"] {{ background:transparent !important; border:0 !important; box-shadow:none !important;
+  padding:0 !important; margin:0 !important; border-radius:0 !important; }}
+#chat .message-content {{ padding:0 !important; min-height:0 !important; }}
+#chat .message.bot, #chat .message.bot * {{ color:{SOFT}; }}
+#chat .message.bot strong {{ color:{WHITE}; }}
+#chat .message.user, #chat .message.user * {{ color:{WHITE} !important; }}
+#chat .message p {{ margin:.35rem 0 !important; }}
+#chat .message ul {{ margin:.35rem 0 !important; padding-left:1.1rem; }}
 #chat a {{ color:{LINK} !important; }}
 
 #chips {{ flex-wrap:wrap !important; gap:.5rem !important; }}
@@ -135,7 +155,8 @@ def esc(s: str) -> str:
 
 def format_reply(d: dict) -> str:
     """Convierte la respuesta del servicio en Markdown seguro."""
-    parts = [esc(d.get("respuesta", "")).replace("\n", "  \n")]
+    texto = re.sub(r"\s*\[\d+\]", "", d.get("respuesta", ""))  # marcadores de cita internos: no se muestran
+    parts = [esc(texto).replace("\n", "  \n")]
     for a in d.get("advertencias", []):
         parts.append(f"**Aviso:** {esc(a)}")
     for f in d.get("fichas", []):
@@ -147,10 +168,6 @@ def format_reply(d: dict) -> str:
         if f.get("desactualizado"):
             lines.append("- **Aviso:** esta información puede estar desactualizada; confirma con la oficina.")
         parts.append(head + "\n" + "\n".join(lines))
-    if d.get("fuentes"):
-        src = "; ".join(f"[{s['n']}] {esc(s['titulo'])}" + (f" ({s['actualizado']})" if s.get("actualizado") else "")
-                        for s in d["fuentes"])
-        parts.append(f"*Fuentes:* {src}")
     return "\n\n".join(parts)
 
 
@@ -165,7 +182,7 @@ def handle(msg: str, history: list, cid: str, ip: str, service) -> tuple[list, s
         return history, "", ""
     sin = ""
     if not service.quota.rate_ok(ip, cid):
-        reply, uso = "Hiciste muchas consultas seguidas. Espera un minuto e inténtalo de nuevo.", ""
+        reply, uso = MSG_RITMO, ""
     else:
         try:
             d = service.responder(msg, "todos", ip, cid)

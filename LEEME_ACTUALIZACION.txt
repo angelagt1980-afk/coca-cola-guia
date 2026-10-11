@@ -1,25 +1,12 @@
-ACTUALIZACIÓN: GTU GUÍA — modo oscuro, interfaz simplificada, informes y ejemplos dinámicos
-===========================================================================================
+ACTUALIZACIÓN v3 — GTU GUÍA
+===========================
+Subir: descomprime y en GitHub "Add file" > "Upload files", arrastra las carpetas (sobrescribe). Commit; Render redespliega.
 
-CÓMO SUBIRLO (GitHub web)
-1) Descomprime el zip.
-2) En tu repositorio: "Add file" > "Upload files" y arrastra las carpetas/archivos descomprimidos
-   (conservan su estructura; GitHub sobrescribe los existentes). Archivos ocultos como .env.example:
-   si tu explorador no los muestra, actívalos o edita ese archivo directamente en GitHub.
-3) "Commit changes". Render redespliega solo. No hay archivos que borrar.
-
-NOVEDADES
-- Nombre: GTU GUÍA. Modo oscuro por defecto con la paleta GTU (logo en variante clara).
-- Quitados: "Nueva conversación", selector Estudiante/Profesor/Otro, botón de texto "Preguntar"
-  (ahora flecha dentro del cuadro de texto), botones de me sirvió / no me sirvió.
-- Cada visita es una conversación nueva; no se guarda historial.
-- Ejemplos de preguntas: salen del campo PREGUNTA de cada entrada del corpus y se ordenan
-  por los temas más consultados.
-- Botón "Informar que falta esta información" cuando no hay respuesta.
-  Admin: GET /api/admin/reportes (con tu token). Opcional: variable REPORT_WEBHOOK_URL.
-- Panel oculto (botón "i" del encabezado) con dirección y contacto: data/info_campus.md.
-- La información real de GTU también está como entrada del corpus (gtu-campus-hermosillo).
-
-EN RENDER (opcional)
-- REPORT_WEBHOOK_URL = URL de un webhook (Discord/Slack/Apps Script) para no perder informes al reiniciar.
-- Recuerda: Start Command = uvicorn app.main:app --host 0.0.0.0 --port $PORT
+CAMBIOS
+1) Marco de las respuestas: ahora hay UN solo marco por mensaje, con relleno propio (más grande que el texto).
+   Antes se dibujaban dos marcos anidados que pisaban el texto.
+2) Ya no se escribe "Fuentes" ni los marcadores [1] en las respuestas.
+3) Mensaje respetuoso que explica el límite de consultas con IA: se muestra al agotarse el cupo personal o el global
+   (junto con la ficha más relevante), al enviar demasiado rápido y de forma permanente en el aviso inferior.
+4) Scroll del chat con aire a la derecha y barra fina; se oculta la barra de herramientas del chat
+   (limpiar / copiar / compartir), por lo que ya no queda pegada al scroll.
