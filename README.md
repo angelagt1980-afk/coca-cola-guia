@@ -1,96 +1,261 @@
-# GTU GUÍA (versión simple, bajo costo de tokens)
+# GTU GUÍA
 
-Chat (Gradio, con la marca del Grupo Tecnológico Universitario) de consulta sobre **trámites y servicios** del campus para estudiantes y profesores.
-El usuario solo ve un chat. El administrador mantiene **un archivo de texto** (`data/corpus.txt`).
+Asistente conversacional de trámites y servicios para GTU Campus Hermosillo. Responde dudas de estudiantes y profesores a partir de un catálogo en texto plano que mantiene el equipo administrativo, con un consumo de tokens mínimo y acotado por usuario.
+
+![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Gradio](https://img.shields.io/badge/Gradio-6.30-F97316)
+![Deploy](https://img.shields.io/badge/deploy-Render-46E3B7)
+
+## Contenido
+
+- [Características](#características)
+- [Arquitectura](#arquitectura)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Inicio rápido](#inicio-rápido)
+- [Configuración](#configuración)
+- [Catálogo (corpus)](#catálogo-corpus)
+- [Administración](#administración)
+- [API HTTP](#api-http)
+- [Pruebas y calidad](#pruebas-y-calidad)
+- [Despliegue en Render](#despliegue-en-render)
+- [Seguridad y privacidad](#seguridad-y-privacidad)
+- [Limitaciones conocidas](#limitaciones-conocidas)
+
+## Características
+
+- **Catálogo como fuente de verdad.** Toda la información vive en `data/corpus.txt`. Agregar conocimiento es agregar una ficha, no cambiar código.
+- **Coste de tokens mínimo.** La IA es el último recurso: la mayoría de las consultas se resuelven con búsqueda local y no gastan tokens.
+- **Sin datos inventados.** Horarios, teléfonos, correos y ubicaciones se toman siempre de la ficha, nunca los redacta el modelo. Si un dato no está registrado, la aplicación lo indica.
+- **Límites de uso.** Cupos por consulta, por usuario y por día, y un tope global, con degradación a respuesta directa en lugar de error.
+- **Conversación fluida.** Respuestas al punto, preguntas de seguimiento y respuesta en streaming.
+- **Mejora continua.** Los usuarios pueden informar cuando falta información; el administrador convierte esos informes en nuevas fichas.
+- **Panel de administración** con editor del catálogo, importación de documentos asistida por IA y publicación en GitHub.
+- **Interfaz minimalista** en modo oscuro con la identidad visual de GTU.
+
+## Arquitectura
 
 ```
-data/corpus.txt ──► python -m app.build_corpus ──► data/index.json   (0 tokens)
-                                                        │
- usuario ─► chat ─► filtro seguridad ─► caché ─► búsqueda local ─┬─► ficha directa      (0 tokens)
-                                                                 └─► 1 llamada LLM corta (~860 tokens máx.)
+                      ┌──────────────────────────── FastAPI ────────────────────────────┐
+ Navegador ──► Gradio │  /           chat público (interfaz Gradio)                      │
+                      │  /admin      panel de administración (token)                     │
+                      │  /api/*      API HTTP · /health · /docs                          │
+                      └───────┬──────────────────────────────────────────────────────────┘
+                              ▼
+                       app/service.py  (pipeline de consulta)
+                              │
+   ┌──────────┬───────────────┼────────────────┬───────────────┐
+   ▼          ▼               ▼                ▼               ▼
+ safety    intent       índice BM25        quota / caché     llm.py
+(derivar) (qué dato    (tags, sinónimos,  (cupos, límites)  (Anthropic u
+           se pide)     prefijos)                            OpenAI-compatible)
+                              ▲
+                  data/corpus.txt ──► app.build_corpus ──► data/index.json
+```
+
+### Pipeline de consulta
+
+Cada nivel se evalúa en orden; solo el último consume tokens de salida significativos.
+
+| Nivel | Comportamiento | Tokens |
+|---|---|---|
+| 0 | Derivación de emergencias y temas de salud, legales o psicológicos; caché; aclaración cuando se pregunta un dato sin indicar el tema | 0 |
+| 1 | **Respuesta al punto**: devuelve únicamente el dato pedido (horario, teléfono, ubicación…). **Seguimiento**: «¿y el teléfono?» reutiliza el último tema de la conversación. Ficha directa para consultas claras | 0 |
+| 1b | **Reformulación**: si la búsqueda local no encuentra nada, el modelo propone 4 a 8 palabras clave y se busca de nuevo (una vez por pregunta, con caché; no cuenta como consulta del día) | ≈ 100 |
+| 2 | Una llamada al modelo con un máximo de 3 fichas recortadas, en streaming | ≈ 860 máx. |
+
+### Decisiones de diseño
+
+- **Búsqueda léxica** (BM25 con campos ponderados: tags ×4, título ×3, puesto ×2, texto ×1), sinónimos editables y coincidencia por prefijo. No requiere embeddings ni base de datos y construir el índice cuesta 0 tokens.
+- **Abstención con umbrales** (`MIN_SCORE`, `MIN_COVERAGE`): sin evidencia suficiente no se invoca al modelo.
+- **Contenido como dato.** Las fichas se entregan al modelo delimitadas y se instruye ignorar órdenes embebidas. Correos y teléfonos nunca se envían al modelo.
+- **Citas validadas.** El modelo cita el id de la ficha; las citas inexistentes se descartan y la respuesta se marca como no verificada si no cita ninguna.
+- **Sin estado en servidor.** Sin cuentas ni base de datos; la conversación no se persiste.
+
+## Estructura del repositorio
+
+```
+app/
+  main.py          FastAPI: API, cabeceras de seguridad y montaje de Gradio
+  ui.py            interfaz pública (tema oscuro, chat, streaming)
+  admin.py         panel /admin y publicación del catálogo en GitHub
+  admin_ai.py      importación de documentos y borradores con IA (uso del administrador)
+  service.py       pipeline de consulta
+  index.py         índice BM25, sinónimos y cobertura
+  intent.py        detección local del dato solicitado
+  corpus.py        parser y validación de corpus.txt
+  llm.py           cliente HTTP del modelo (respuesta completa y streaming)
+  quota.py         ritmo, cupos diarios y tope global
+  safety.py        filtro de derivación
+  build_corpus.py  CLI: validar e indexar
+  importar.py      CLI: proponer fichas desde un documento
+data/
+  corpus.txt       catálogo de trámites y servicios
+  sinonimos.txt    vocabulario coloquial
+  info_campus.md   datos del campus (panel oculto del chat)
+  index.json       índice precalculado
+tests/             pytest
+render.yaml        servicio de Render
 ```
 
 ## Inicio rápido
+
+Requisitos: Python 3.12.
+
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
-cp .env.example .env            # edita LLM_API_KEY, ADMIN_TOKEN, ID_SALT (o LLM_PROVIDER=none)
-python -m app.build_corpus      # valida y genera data/index.json
-set -a; source .env; set +a     # (o exporta las variables como prefieras)
-uvicorn app.main:app --reload   # http://localhost:8000   (Swagger en /docs)
-pytest -q --cov=app
+cp .env.example .env                  # edita LLM_API_KEY, ADMIN_TOKEN, ID_SALT
+python -m app.build_corpus            # valida el catálogo y genera data/index.json
+set -a; source .env; set +a           # exporta las variables del entorno
+uvicorn app.main:app --reload         # http://localhost:8000
 ```
-Con `LLM_PROVIDER=none` todo funciona **sin gastar un solo token** (respuestas directas con ficha).
 
-## Cómo actualizar la información (administrador)
-**Opción A — Panel web `/admin` (recomendada).** Entra a `https://TU-APP.onrender.com/admin` con tu `ADMIN_TOKEN`.
-- *Resumen*: temas más consultados, informes de «sin respuesta», fichas desactualizadas y avisos.
-- *Corpus*: edita el texto completo, **Validar** y **Guardar y publicar**. Se aplica al instante en el servidor y, si configuraste `GITHUB_TOKEN` + `GITHUB_REPO`, se hace commit en GitHub (Render redespliega solo). Sin GitHub el cambio se pierde al reiniciar el servicio.
-- *Importar con IA*: sube un reglamento o convocatoria (PDF, HTML, TXT, MD; máx. 3 MB). La IA propone fichas; **tú revisas**. Los correos, teléfonos y webs que no aparezcan en el documento se eliminan de la propuesta. Gasta tokens una sola vez por documento (≈ 1,000–1,500 por fragmento de 6,000 caracteres; tope de `IMPORT_MAX_CHUNKS`).
-- *Borrador desde informes*: convierte las preguntas sin respuesta más frecuentes en fichas con `[COMPLETAR]`. **No se pueden publicar mientras tengan `[COMPLETAR]`**.
-- Crear el token de GitHub: Settings → Developer settings → Fine-grained tokens → solo este repositorio → permiso *Contents: Read and write*.
+Con `LLM_PROVIDER=none` la aplicación funciona completa sin invocar al modelo (respuestas directas y al punto, sin reformulación ni redacción).
 
-**Opción B — A mano.**
-1. Abre `data/corpus.txt`, copia `data/plantilla_entrada.txt` al final y llena los campos.
-2. `python -m app.build_corpus` valida (avisa de tags faltantes, fechas, correos, entradas largas u obsoletas).
-3. `git commit` y `git push` → Render redespliega solo.
-4. Por consola: `python -m app.importar reglamento.pdf --dry-run` (costo estimado, 0 tokens) y luego sin `--dry-run` para escribir `data/propuestas.txt`. `python -m app.build_corpus --sugerir-tags` sugiere tags solo para entradas sin TAGS.
+## Configuración
 
-API (con tu token): `GET /api/admin/reportes` y `POST /api/admin/reindex`.
+Todo se controla con variables de entorno (ver `.env.example`). Las claves y tokens nunca deben subirse al repositorio.
 
-### Formato de una entrada
+| Variable | Descripción | Por defecto |
+|---|---|---|
+| `LLM_PROVIDER` | `anthropic`, `openai` (compatible) o `none` | `anthropic` |
+| `MODEL_NAME` | Modelo a utilizar; verifica el identificador vigente con tu proveedor | `claude-haiku-5-5` |
+| `LLM_API_KEY` | Clave del proveedor (secreta) | — |
+| `LLM_BASE_URL` | URL base alternativa para proveedores compatibles | — |
+| `ADMIN_TOKEN` | Token del panel y de `/api/admin/*` (secreto) | — |
+| `ID_SALT` | Sal para el hash de identificadores anónimos (secreta) | `cambia-esto` |
+| `TIMEZONE` | Zona horaria para el reinicio diario de cupos | `America/Hermosillo` |
+| `MAX_QUERY_CHARS` | Longitud máxima de la pregunta | `300` |
+| `TOP_K` | Fichas máximas enviadas al modelo | `3` |
+| `MAX_CONTEXT_CHARS` | Presupuesto de contexto por consulta | `1800` |
+| `MAX_OUTPUT_TOKENS` | Tokens máximos de salida | `250` |
+| `USER_TOKENS_DAY` / `USER_QUERIES_DAY` | Cupo diario por usuario | `10000` / `15` |
+| `REQ_PER_MIN` | Consultas por minuto por usuario | `8` |
+| `IP_MULTIPLIER` | Holgura del cupo por IP (redes compartidas) | `5` |
+| `GLOBAL_TOKENS_DAY` | Tope diario de todo el servicio | `300000` |
+| `MIN_SCORE` / `MIN_COVERAGE` | Umbrales de relevancia | `1.2` / `0.34` |
+| `DIRECT_ENABLED` | Permite responder con la ficha sin invocar al modelo | `true` |
+| `STALE_DAYS` | Antigüedad a partir de la cual se avisa de vigencia | `365` |
+| `CACHE_SIZE` / `CACHE_TTL_S` | Caché de respuestas | `500` / `86400` |
+| `REPORTS_PER_DAY` | Informes de «sin respuesta» por usuario y día | `5` |
+| `REPORT_WEBHOOK_URL` | Webhook opcional que recibe los informes | — |
+| `IMPORT_MAX_CHUNKS` / `IMPORT_CHUNK_CHARS` | Límites de la importación asistida | `6` / `6000` |
+| `GITHUB_TOKEN`, `GITHUB_REPO` | Publicación del catálogo desde el panel | — |
+| `GITHUB_BRANCH`, `GITHUB_CORPUS_PATH` | Rama y ruta del catálogo | `main`, `data/corpus.txt` |
+
+> Los cupos viven en memoria y se reinician con el servicio. Configura además un tope de gasto en el panel del proveedor del modelo.
+
+## Catálogo (corpus)
+
+`data/corpus.txt` contiene una ficha por trámite o servicio. El formato es de texto plano, pensado para editarse a mano:
+
 ```
-### servicios-escolares                  <- id único (minúsculas y guiones)
+### servicios-escolares
 TITULO: Servicios Escolares
 PUESTO: Coordinación de Servicios Escolares
 CATEGORIA: tramites
-AUDIENCIA: estudiante                    <- estudiante | profesor | todos (la interfaz ya no pregunta el perfil)
-TAGS: inscripcion, credencial, kardex    <- lo que la gente escribiría; incluye sinónimos coloquiales
-RESPONSABLE: Mtra. Laura Pérez
-CORREO: servicios.escolares@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 101
+AUDIENCIA: estudiante
+TAGS: inscripcion, credencial, kardex, constancia, baja
+RESPONSABLE: Nombre del responsable
+CORREO: servicios.escolares@dominio.edu.mx
+TELEFONO: 662 000 0000 ext. 101
 UBICACION: Planta baja, junto a la cafetería
 HORARIO: Lunes a viernes, 9:00 a 15:00
+WEB: https://ejemplo.edu.mx
 ACTUALIZADO: 2026-08-15
-PREGUNTA: ¿Dónde entrego mis documentos de inscripción?   <- (opcional) ejemplo que verá el usuario
---                                       <- separa encabezado y texto
-Texto libre, frases cortas, menos de 1,200 caracteres.
+PREGUNTA: ¿Dónde entrego mis documentos de inscripción?
+--
+Texto libre con frases cortas y literales: qué es, qué llevar, pasos y qué puede variar.
 ```
-`data/sinonimos.txt`: un grupo por línea (`inscripcion, matricula, registro`) para vocabulario coloquial.
 
-## Control de gasto (todo configurable por variable de entorno)
-| Capa | Control | Por defecto |
+| Campo | Uso |
+|---|---|
+| `### id` | Identificador único (minúsculas y guiones) |
+| `TITULO` | Obligatorio |
+| `TAGS` | Palabras que los usuarios escribirían, con sinónimos coloquiales. Principal factor de recuperación |
+| `PUESTO`, `RESPONSABLE`, `CORREO`, `TELEFONO`, `UBICACION`, `HORARIO`, `WEB` | Ficha de contacto y respuestas al punto |
+| `ACTUALIZADO` | `AAAA-MM-DD`; habilita el aviso de vigencia |
+| `PREGUNTA` | Pregunta modelo mostrada como ejemplo en el chat; los temas más consultados aparecen primero |
+| `CATEGORIA`, `AUDIENCIA` | Clasificación |
+
+Recomendaciones: un tema por ficha, menos de 1,200 caracteres de texto, ubicaciones con puntos de referencia y sin datos personales. Una ficha que contenga `[COMPLETAR]` no pasa la validación.
+
+`data/sinonimos.txt` define un grupo por línea (`inscripcion, matricula, registro`). Se aplica a la consulta, no al documento.
+
+## Administración
+
+### Panel web
+
+`/admin` (requiere `ADMIN_TOKEN`):
+
+- **Resumen:** temas más consultados, informes de «sin respuesta», fichas desactualizadas y avisos de validación.
+- **Corpus:** editor con validación y **Guardar y publicar**. El cambio se aplica de inmediato; con `GITHUB_TOKEN` y `GITHUB_REPO` se registra además un commit y Render redespliega.
+- **Importar con IA:** carga de PDF, HTML, TXT o MD (máx. 3 MB). Propone fichas para revisión; los correos, teléfonos y URLs ausentes del documento original se eliminan de la propuesta.
+- **Borrador desde informes:** genera fichas con `[COMPLETAR]` a partir de las preguntas sin respuesta más frecuentes. No pueden publicarse hasta completarse con información oficial.
+
+El token de GitHub debe ser *fine-grained*, limitado a este repositorio y con permiso *Contents: Read and write*.
+
+### Línea de comandos
+
+```bash
+python -m app.build_corpus                  # valida e indexa (0 tokens)
+python -m app.build_corpus --check          # solo valida (CI)
+python -m app.build_corpus --sugerir-tags   # sugiere tags para fichas sin TAGS
+python -m app.importar doc.pdf --dry-run    # fragmentos y coste estimado, sin llamar al modelo
+python -m app.importar doc.pdf              # escribe data/propuestas.txt
+```
+
+## API HTTP
+
+Documentación interactiva en `/docs`.
+
+| Método y ruta | Descripción | Acceso |
 |---|---|---|
-| Consulta | caracteres de pregunta / documentos / contexto / salida | 300 / 3 / 1,800 / 250 tokens |
-| Usuario | tokens y consultas con IA por día (id anónimo + IP) | 10,000 / 15 |
-| Ritmo | consultas por minuto | 8 |
-| Global | tokens por día de todo el servicio | 300,000 |
-| Gratis | caché, derivaciones, abstenciones, respuestas directas | 0 tokens |
-Al agotarse el cupo, el usuario **sigue recibiendo la ficha** (degradación, no error). **Configura también un tope de gasto en el panel del proveedor**: los contadores viven en memoria y se reinician al reiniciar el servicio.
+| `GET /health` | Estado del servicio | Público |
+| `POST /api/consulta` | `{"texto": str, "perfil": "estudiante\|profesor\|todos"}` → respuesta con fichas y uso. Cabecera opcional `X-Client-Id` | Público, con límite de ritmo |
+| `POST /api/feedback` | `{"util": bool}` | Público |
+| `GET /api/admin/estado` | Estado del índice, métricas y cuotas | Token |
+| `GET /api/admin/reportes` | Informes de «sin respuesta» y temas populares | Token |
+| `POST /api/admin/reindex` | Recarga el catálogo | Token |
 
-## Cómo piensa la app (y cuánto cuesta cada nivel)
-| Nivel | Qué ocurre | Tokens |
-|---|---|---|
-| 0 | Emergencias/salud/legal → derivación fija · caché · aclaración si preguntan un dato sin decir de qué | 0 |
-| 1 | **Respuesta al punto**: «¿a qué hora abre la biblioteca?» devuelve solo el horario de la ficha · **seguimiento**: «¿y el teléfono?» usa el último tema de esa conversación · ficha directa para consultas claras | 0 |
-| 1b | **Segunda oportunidad**: si la búsqueda local no halla nada, la IA propone 4–8 palabras clave y se busca de nuevo (una vez por pregunta, con caché; no cuenta como consulta del día) | ≈ 100 |
-| 2 | Una llamada a la IA con ≤ 3 fichas recortadas, **en streaming** (el texto aparece mientras se escribe) | ≈ 860 máx. |
-Los datos (horarios, teléfonos, correos, ubicación) siempre salen del corpus, nunca los escribe el modelo. Si un dato no está registrado, la app lo dice en vez de inventarlo.
+El token se envía en `X-Admin-Token` o `Authorization: Bearer <token>`.
 
-## Interfaz (Gradio) y marca
-Experiencia directa: abres la página, escribes, envías (flecha) y recibes respuesta. Cada visita es una conversación nueva; **no se guarda ningún historial**.
-- Código en `app/ui.py` (tema, CSS, chat). Se monta en `/` dentro de FastAPI: siguen existiendo `/health`, `/api/*` y `/docs`.
-- **Modo oscuro por defecto** con la paleta GTU (constantes al inicio de `ui.py`): fondo azul marino muy oscuro derivado de #06096F, burbuja del usuario en degradado #234488→#046DB4, acento naranja #FF5100/#FF7D00 (botón de envío, borde de las respuestas).
-- Logo: `app/static/logo_dark.png` (variante con el texto en #F5F5F5 para fondo oscuro; el original `logo.png` se conserva) y favicon `favicon.png`.
-- **Ejemplos de preguntas**: son las `PREGUNTA:` que escribes en el corpus; se muestran primero las de los temas más consultados desde el último reinicio. Nunca se muestra texto escrito por usuarios. Desaparecen al enviar la primera pregunta.
-- **Informe de «sin respuesta»**: cuando no hay información aparece el botón «Informar que falta esta información». Envía solo la pregunta (con correos/teléfonos tachados), máximo `REPORTS_PER_DAY` por usuario y día. Se guarda en memoria, se escribe en los registros de Render (`REPORTE_SIN_RESPUESTA`) y, si defines `REPORT_WEBHOOK_URL`, se envía a ese webhook (Discord, Slack, Google Apps Script…). **En el plan gratuito la memoria se pierde al reiniciar**: usa el webhook o revisa los registros.
-- **Información del campus**: el botón «i» del encabezado abre un panel oculto con dirección y contacto; el texto está en `data/info_campus.md` (edítalo a mano). La misma información está como entrada del corpus (`gtu-campus-hermosillo`) para que el chat también la responda.
+## Pruebas y calidad
+
+```bash
+ruff check .
+python -m app.build_corpus --check
+pytest -q --cov=app
+```
+
+Las pruebas no realizan llamadas de red: el modelo, GitHub y el streaming se simulan. Cubren el parser del corpus, la recuperación, los cupos, el pipeline (abstención, derivación, caché, seguimiento, reformulación, streaming y degradación), la importación con verificación de contactos, el panel y la API. El flujo de integración continua (`.github/workflows/ci.yml`) ejecuta lint, validación del catálogo, pruebas con cobertura y `pip-audit`.
 
 ## Despliegue en Render
-`render.yaml` incluido. Variables secretas en el panel: `LLM_API_KEY`, `ADMIN_TOKEN`, `ID_SALT`. Healthcheck: `/health`.
+
+1. Crea un **Web Service** conectado a este repositorio (o usa `render.yaml` como Blueprint).
+2. Configura:
+   - **Build Command:** `pip install -r requirements.txt && python -m app.build_corpus --check`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Health Check Path:** `/health`
+3. Variables de entorno: `PYTHON_VERSION=3.12.8`, `LLM_API_KEY`, `ADMIN_TOKEN` e `ID_SALT`; opcionalmente `GITHUB_TOKEN`, `GITHUB_REPO` y `REPORT_WEBHOOK_URL`.
+4. Cada push a la rama principal redespliega automáticamente.
+
+Los valores de `render.yaml` solo se aplican si el servicio se crea como Blueprint; en un servicio creado desde el panel deben configurarse allí. Verifica los límites vigentes del plan elegido: en el plan gratuito el servicio se suspende por inactividad, tiene memoria limitada y no ofrece disco persistente, por lo que los cambios hechos desde el panel sin `GITHUB_TOKEN` y los informes en memoria se pierden al reiniciar.
 
 ## Seguridad y privacidad
-Sin cuentas ni base de datos; no se guarda la conversación ni las preguntas. Solo se guarda la pregunta si el usuario pulsa «Informar» (truncada, con datos de contacto tachados y sin IP). IPs e ids se usan con hash salado en memoria. Documentos al modelo como datos delimitados; correos y teléfonos **nunca** se envían al modelo. Todo el contenido del corpus se muestra escapado como texto en el chat (sin HTML ni formato inyectado); la API lleva cabeceras de seguridad. Admin con token y bloqueo tras 5 intentos fallidos.
+
+- Sin cuentas, sin base de datos y sin historial: la conversación no se guarda.
+- Los cupos usan un identificador anónimo del navegador y la IP, ambos con hash salado y solo en memoria.
+- La pregunta solo se almacena si el usuario pulsa «Informar que falta esta información»; se trunca y se enmascaran correos y teléfonos.
+- Los endpoints de administración usan comparación de token en tiempo constante, bloqueo tras 5 intentos fallidos en 10 minutos y se revalidan en cada acción del panel.
+- Todo el contenido del catálogo y de los usuarios se muestra escapado; la API incluye `Content-Security-Policy` y `X-Content-Type-Options`.
+- Las fichas se tratan como datos delimitados; correos y teléfonos no se envían al modelo.
+- Las dependencias están fijadas y se auditan en CI.
 
 ## Limitaciones conocidas
-Búsqueda léxica (BM25 + tags + sinónimos + prefijos), no semántica: la calidad depende de buenos TAGS y sinónimos. Plan gratuito de Render: arranque en frío, 512 MB de RAM (Gradio consume más que una página estática: vigila la memoria en los registros) y sin disco persistente. Verifica el nombre de modelo y los límites vigentes del proveedor antes de desplegar. Este código fue generado con asistencia de IA: ver `ANEXO_ATRIBUCION_IA.md`.
+
+- La búsqueda es léxica: la calidad depende de buenos `TAGS` y sinónimos. Los umbrales de relevancia deben calibrarse con el catálogo real.
+- Los contadores de cupo, los informes y la popularidad de temas viven en memoria y se reinician con el servicio.
+- Las respuestas directas devuelven datos de la ficha, por lo que su exactitud depende de que el catálogo esté al día (`ACTUALIZADO`).
+- Los selectores de estilo dependen de los nombres internos de Gradio 6.30; actualizar la versión puede requerir ajustar el CSS en `app/ui.py`.
