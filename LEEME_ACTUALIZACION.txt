@@ -1,0 +1,29 @@
+ACTUALIZACIÓN: interfaz Gradio con la marca GTU
+================================================
+
+1) Descomprime este zip.
+2) En tu repositorio en GitHub (web): "Add file" > "Upload files" y arrastra las carpetas/archivos
+   descomprimidos respetando la estructura. GitHub sobrescribe los que ya existen.
+   Haz "Commit changes"; Render redespliega solo.
+
+ARCHIVOS NUEVOS
+  app/ui.py                   interfaz Gradio (tema, CSS, chat)
+  app/static/logo.png         logo del Grupo Tecnológico Universitario
+  app/static/favicon.png      escudo recortado del logo
+  tests/test_ui.py            pruebas de la interfaz
+
+ARCHIVOS MODIFICADOS
+  app/main.py                 monta Gradio en "/" (la API /api/*, /health y /docs siguen igual)
+  requirements.txt            ahora incluye gradio (versiones fijadas y probadas juntas)
+  requirements-dev.txt
+  tests/test_api.py
+  README.md
+
+ARCHIVOS A BORRAR EN GITHUB (ya no se usan; la subida web no borra archivos)
+  app/static/index.html
+  app/static/app.js
+  app/static/styles.css
+  (abre cada archivo en GitHub > icono de tres puntos > Delete file)
+
+SIN CAMBIOS: render.yaml, .env.example, data/, resto de app/, CI.
+Render: el comando de inicio sigue siendo   uvicorn app.main:app --host 0.0.0.0 --port $PORT

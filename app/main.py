@@ -9,13 +9,15 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
+import gradio as gr
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .config import settings
 from .service import Service
+from .ui import CSS, THEME, build_ui
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 log = logging.getLogger("campusguia")
@@ -34,10 +36,14 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 _fails: dict[str, deque] = defaultdict(deque)
 
 
+def get_service() -> Service:
+    if not hasattr(app.state, "service"):
+        app.state.service = Service(settings)
+    return app.state.service
+
+
 def svc(request: Request) -> Service:
-    if not hasattr(request.app.state, "service"):
-        request.app.state.service = Service(settings)
-    return request.app.state.service
+    return get_service()
 
 
 def client_ip(request: Request) -> str:
@@ -50,9 +56,8 @@ async def security_headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers.setdefault("X-Content-Type-Options", "nosniff")
     resp.headers.setdefault("Referrer-Policy", "no-referrer")
-    if not request.url.path.startswith(("/docs", "/openapi")):
-        resp.headers.setdefault("Content-Security-Policy",
-                                "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+    if request.url.path.startswith("/api/"):
+        resp.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
     return resp
 
 
@@ -63,11 +68,6 @@ class ConsultaIn(BaseModel):
 
 class FeedbackIn(BaseModel):
     util: bool
-
-
-@app.get("/", include_in_schema=False)
-def home():
-    return FileResponse(STATIC / "index.html")
 
 
 @app.get("/health")
@@ -135,3 +135,8 @@ def admin_brechas(request: Request, authorization: str | None = Header(default=N
                   x_admin_token: str | None = Header(default=None)):
     admin(request, authorization, x_admin_token)
     return {"sin_respuesta": list(svc(request).gaps)}
+
+
+# ---------------- interfaz Gradio (debe montarse DESPUÉS de definir las rutas de la API) ----------------
+app = gr.mount_gradio_app(app, build_ui(get_service), path="/", theme=THEME, css=CSS,
+                          favicon_path=str(STATIC / "favicon.png"))

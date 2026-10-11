@@ -18,9 +18,16 @@ def test_health(client):
     assert client.get("/health").json()["status"] == "ok"
 
 
-def test_home_y_cabeceras(client):
+def test_home_gradio_y_logo(client):
     r = client.get("/")
-    assert r.status_code == 200 and "Content-Security-Policy" in r.headers
+    assert r.status_code == 200 and "CampusGuía" in r.text
+    assert client.get("/static/logo.png").status_code == 200
+    assert client.get("/static/favicon.png").status_code == 200
+
+
+def test_cabeceras_solo_en_api(client):
+    r = client.post("/api/consulta", json={"texto": "wifi"})
+    assert "Content-Security-Policy" in r.headers and r.headers["X-Content-Type-Options"] == "nosniff"
 
 
 def test_consulta_valida(client):

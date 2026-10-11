@@ -1,6 +1,6 @@
 # CampusGuía (versión simple, bajo costo de tokens)
 
-Chat de consulta sobre **trámites y servicios** del campus para estudiantes y profesores.
+Chat (Gradio, con la marca del Grupo Tecnológico Universitario) de consulta sobre **trámites y servicios** del campus para estudiantes y profesores.
 El usuario solo ve un chat. El administrador mantiene **un archivo de texto** (`data/corpus.txt`).
 
 ```
@@ -59,11 +59,17 @@ Texto libre, frases cortas, menos de 1,200 caracteres.
 | Gratis | caché, derivaciones, abstenciones, respuestas directas | 0 tokens |
 Al agotarse el cupo, el usuario **sigue recibiendo la ficha** (degradación, no error). **Configura también un tope de gasto en el panel del proveedor**: los contadores viven en memoria y se reinician al reiniciar el servicio.
 
+## Interfaz (Gradio) y marca
+- Código en `app/ui.py`: tema, CSS y chat; se monta en `/` dentro de FastAPI (`app/main.py`), de modo que **siguen existiendo** `/health`, `/api/*` y `/docs`.
+- Logo en `app/static/logo.png` y favicon en `app/static/favicon.png`. Para cambiarlos, reemplaza los archivos.
+- Paleta (constantes al inicio de `ui.py`): azul de marca `#234488` para texto, botones y burbuja del usuario; naranjas `#FF5100`/`#FF7D00` solo como acento (barra del encabezado y borde de la respuesta), porque el naranja sobre blanco no cumple el contraste 4.5:1 de WCAG AA.
+- La interfaz fuerza los colores de marca también en modo oscuro del navegador.
+
 ## Despliegue en Render
 `render.yaml` incluido. Variables secretas en el panel: `LLM_API_KEY`, `ADMIN_TOKEN`, `ID_SALT`. Healthcheck: `/health`.
 
 ## Seguridad y privacidad
-Sin cuentas ni base de datos; no se guardan preguntas (solo, opcional, las no respondidas: truncadas, sin IP). IPs e ids se usan con hash salado en memoria. Documentos al modelo como datos delimitados; correos y teléfonos **nunca** se envían al modelo. Texto del chat con `textContent` (sin XSS) + CSP. Admin con token y bloqueo tras 5 intentos fallidos.
+Sin cuentas ni base de datos; no se guardan preguntas (solo, opcional, las no respondidas: truncadas, sin IP). IPs e ids se usan con hash salado en memoria. Documentos al modelo como datos delimitados; correos y teléfonos **nunca** se envían al modelo. Todo el contenido del corpus se muestra escapado como texto en el chat (sin HTML ni formato inyectado); la API lleva cabeceras de seguridad. Admin con token y bloqueo tras 5 intentos fallidos.
 
 ## Limitaciones conocidas
-Búsqueda léxica (BM25 + tags + sinónimos + prefijos), no semántica: la calidad depende de buenos TAGS y sinónimos. Plan gratuito de Render: arranque en frío y sin disco persistente. Verifica el nombre de modelo y los límites vigentes del proveedor antes de desplegar. Este código fue generado con asistencia de IA: ver `ANEXO_ATRIBUCION_IA.md`.
+Búsqueda léxica (BM25 + tags + sinónimos + prefijos), no semántica: la calidad depende de buenos TAGS y sinónimos. Plan gratuito de Render: arranque en frío, 512 MB de RAM (Gradio consume más que una página estática: vigila la memoria en los registros) y sin disco persistente. Verifica el nombre de modelo y los límites vigentes del proveedor antes de desplegar. Este código fue generado con asistencia de IA: ver `ANEXO_ATRIBUCION_IA.md`.

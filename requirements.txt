@@ -1,5 +1,6 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
+gradio==6.30.0
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
 httpx==0.28.1
-pydantic==2.10.4
-tzdata==2024.2
+pydantic==2.14.0
+tzdata==2026.5
