@@ -1,0 +1,137 @@
+"""API FastAPI: chat público de solo consulta + endpoints de administración con token."""
+from __future__ import annotations
+
+import hmac
+import logging
+import time
+from collections import defaultdict, deque
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Literal
+
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+
+from .config import settings
+from .service import Service
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+log = logging.getLogger("campusguia")
+STATIC = Path(__file__).parent / "static"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not hasattr(app.state, "service"):
+        app.state.service = Service(settings)
+    yield
+
+
+app = FastAPI(title="CampusGuía", version="2.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=STATIC), name="static")
+_fails: dict[str, deque] = defaultdict(deque)
+
+
+def svc(request: Request) -> Service:
+    if not hasattr(request.app.state, "service"):
+        request.app.state.service = Service(settings)
+    return request.app.state.service
+
+
+def client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    return (xff.split(",")[0].strip() if xff else (request.client.host if request.client else "?"))[:64]
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    if not request.url.path.startswith(("/docs", "/openapi")):
+        resp.headers.setdefault("Content-Security-Policy",
+                                "default-src 'self'; img-src 'self' data:; frame-ancestors 'none'")
+    return resp
+
+
+class ConsultaIn(BaseModel):
+    texto: str = Field(min_length=1, max_length=settings.max_query_chars)
+    perfil: Literal["estudiante", "profesor", "todos"] = "todos"
+
+
+class FeedbackIn(BaseModel):
+    util: bool
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse(STATIC / "index.html")
+
+
+@app.get("/health")
+def health(request: Request):
+    return {"status": "ok", "entradas": len(svc(request).index.entries)}
+
+
+@app.post("/api/consulta")
+def consulta(body: ConsultaIn, request: Request, x_client_id: str | None = Header(default=None)):
+    s = svc(request)
+    ip, cid = client_ip(request), (x_client_id or "")[:64]
+    if not s.quota.rate_ok(ip, cid):
+        raise HTTPException(429, "Demasiadas consultas seguidas. Espera un minuto e inténtalo de nuevo.")
+    t0 = time.time()
+    try:
+        out = s.responder(body.texto, body.perfil, ip, cid)
+    except Exception:  # nunca 500 al usuario
+        log.exception("error inesperado en consulta")
+        return JSONResponse({"tipo": "error", "respuesta": "Ocurrió un error. Inténtalo de nuevo en un momento.",
+                             "fichas": [], "fuentes": [], "verificacion": "no_aplica", "advertencias": [],
+                             "uso": {}})
+    log.info("consulta tipo=%s ms=%d tokens=%s", out["tipo"], (time.time() - t0) * 1000,
+             out["uso"].get("tokens_consulta"))
+    return out
+
+
+@app.post("/api/feedback")
+def feedback(body: FeedbackIn, request: Request):
+    svc(request).metrics["util_si" if body.util else "util_no"] += 1
+    return {"ok": True}
+
+
+# ---------------- administración ----------------
+def admin(request: Request, authorization: str | None, x_admin_token: str | None) -> None:
+    ip, now = client_ip(request), time.time()
+    q = _fails[ip]
+    while q and now - q[0] > 600:
+        q.popleft()
+    if len(q) >= 5:
+        raise HTTPException(429, "Demasiados intentos.")
+    if not settings.admin_token:
+        raise HTTPException(403, "Administración deshabilitada (falta ADMIN_TOKEN).")
+    token = x_admin_token or (authorization or "").removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(token.encode(), settings.admin_token.encode()):
+        q.append(now)
+        raise HTTPException(401, "Token inválido.")
+
+
+@app.post("/api/admin/reindex")
+def admin_reindex(request: Request, authorization: str | None = Header(default=None),
+                  x_admin_token: str | None = Header(default=None)):
+    admin(request, authorization, x_admin_token)
+    return svc(request).reindex()
+
+
+@app.get("/api/admin/estado")
+def admin_estado(request: Request, authorization: str | None = Header(default=None),
+                 x_admin_token: str | None = Header(default=None)):
+    admin(request, authorization, x_admin_token)
+    return svc(request).estado()
+
+
+@app.get("/api/admin/brechas")
+def admin_brechas(request: Request, authorization: str | None = Header(default=None),
+                  x_admin_token: str | None = Header(default=None)):
+    admin(request, authorization, x_admin_token)
+    return {"sin_respuesta": list(svc(request).gaps)}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusGuía</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip" href="#pregunta">Ir al campo de pregunta</a>
+  <header>
+    <h1>CampusGuía</h1>
+    <p>Pregunta sobre trámites y servicios del campus.</p>
+  </header>
+  <main>
+    <p class="aviso" role="note">CampusGuía es una guía de apoyo. Para trámites importantes confirma la información con la oficina responsable.
+      Tus preguntas se procesan con un servicio de IA de un tercero: no escribas datos personales ni de salud.
+      En una emergencia sigue los protocolos oficiales del campus.</p>
+
+    <div id="chat" role="log" aria-live="polite" aria-label="Conversación"></div>
+
+    <form id="form" autocomplete="off">
+      <label for="perfil">Soy</label>
+      <select id="perfil">
+        <option value="todos">Otro / prefiero no decir</option>
+        <option value="estudiante">Estudiante</option>
+        <option value="profesor">Profesor</option>
+      </select>
+      <label for="pregunta">Tu pregunta</label>
+      <textarea id="pregunta" rows="2" maxlength="300" placeholder="Ejemplo: ¿Dónde entrego mis documentos de inscripción?" required></textarea>
+      <div class="row">
+        <button type="submit" id="enviar">Preguntar</button>
+        <span id="uso" aria-live="off"></span>
+      </div>
+    </form>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

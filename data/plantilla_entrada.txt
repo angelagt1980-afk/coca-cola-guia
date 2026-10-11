@@ -1,0 +1,17 @@
+### id-corto-en-minusculas-con-guiones
+TITULO: Nombre oficial del trámite o servicio
+PUESTO: Oficina o puesto responsable
+CATEGORIA: tramites | servicios | tecnologia | apoyo | normas | calendario
+AUDIENCIA: estudiante | profesor | todos          (puedes separar con comas)
+TAGS: palabras que la gente usaría para buscar esto, separadas por comas, sinónimos coloquiales incluidos
+RESPONSABLE: Nombre de la persona (opcional)
+CORREO: oficina@dominio.edu.mx
+TELEFONO: 000 000 0000 ext. 000
+UBICACION: Piso, y un punto de referencia visible ("junto a la cafetería")
+HORARIO: Lunes a viernes, 9:00 a 15:00
+WEB: https://... (opcional)
+ACTUALIZADO: 2026-01-31
+--
+Texto libre, frases cortas y literales. Un tema por entrada, idealmente menos de 1,200 caracteres.
+Qué es, qué llevar, qué pasos seguir, qué puede variar (por ejemplo: "puede haber fila").
+No pongas datos personales ni información confidencial.
