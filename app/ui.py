@@ -124,7 +124,11 @@ footer {{ display:none !important; }}
 #report-note {{ font-size:.8rem; color:{GRAY}; }}
 
 #msg {{ background:{SURFACE} !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:28px !important; padding:.25rem .4rem .25rem 1rem !important; }}
-#msg:focus-within {{ border-color:{ORANGE2} !important; box-shadow:0 0 0 3px rgba(255,125,0,.22); }}
+#msg {{ --input-border-color-focus: rgba(255,255,255,.38); --input-shadow-focus: none; }}
+/* Sin marco naranja al escribir: el único indicador de foco es un borde blanco más claro (accesible, discreto). */
+#msg:focus-within {{ border-color:rgba(255,255,255,.38) !important; box-shadow:none !important; }}
+#msg textarea:focus, #msg textarea:focus-visible {{ outline:none !important; box-shadow:none !important; border:0 !important; }}
+#msg button:focus-visible {{ outline:2px solid {SOFT} !important; outline-offset:2px; }}
 #msg textarea {{ background:transparent !important; border:0 !important; box-shadow:none !important; color:{SOFT} !important; font-size:1.02rem; }}
 #msg button {{ background:linear-gradient(135deg,{ORANGE},{ORANGE2}) !important; color:{NAVY} !important; border:0 !important;
   border-radius:50% !important; min-width:42px; min-height:42px; }}

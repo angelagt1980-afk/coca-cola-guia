@@ -166,3 +166,12 @@ def test_enlace_discreto_al_panel_visible_y_desactivable(cfg, monkeypatch):
     assert 'href="/admin/"' in enlace.value
     monkeypatch.setattr(ui.settings, "show_admin_link", False)
     assert "admin-link" not in _ids(ui.build_ui(lambda: Service(cfg)))
+
+
+def test_cuadro_de_texto_sin_marco_naranja_al_escribir():
+    css = ui.CSS
+    foco = [ln for ln in css.splitlines() if "#msg:focus-within" in ln]
+    assert foco and all("FF7D00" not in ln.upper() and "255,125,0" not in ln for ln in foco)   # nada naranja
+    assert "#msg textarea:focus-visible" in css and "outline:none" in css                        # sin contorno del navegador
+    assert "--input-shadow-focus: none" in css                                                   # sin resplandor del tema
+    assert "rgba(255,255,255,.38)" in css                                                        # sigue habiendo foco visible (neutro)
