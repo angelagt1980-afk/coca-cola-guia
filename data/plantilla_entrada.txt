@@ -1,0 +1,16 @@
+### id-del-tramite-o-servicio
+TITULO: Nombre oficial del trámite, política o área
+PUESTO: Gerencia o coordinación responsable en Coca-Cola
+CATEGORIA: tramites
+AUDIENCIA: colaborador
+TAGS: palabra1, palabra2, sinonimo1, sinonimo2
+RESPONSABLE: Nombre del responsable
+CORREO: area@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 100
+UBICACION: Piso o edificio, referencia clara
+HORARIO: Lunes a viernes, 9:00 a 17:00
+WEB: https://www.coca-cola.com/mx/es
+ACTUALIZADO: 2026-10-17
+PREGUNTA: ¿Pregunta corta y natural que haría un colaborador o proveedor?
+--
+Descripción clara en frases cortas y literales: qué es, qué documentos o requisitos se piden y cuáles son los pasos.

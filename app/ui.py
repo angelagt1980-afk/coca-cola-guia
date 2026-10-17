@@ -1,9 +1,9 @@
-"""Interfaz Gradio de GTU GUÍA: chat directo, modo oscuro con la paleta del Grupo Tecnológico Universitario.
+"""Interfaz Gradio de COCA-COLA GUÍA: chat directo, diseño profesional con los colores originales de The Coca-Cola Company.
 
-Paleta oficial: #FF5100 #FF7D00 (naranjas) · #06096F #046DB4 #234488 (azules) · #6E306F · #363636 #8B8B8B · #F5F5F5 #FFFFFF.
-Derivados para el modo oscuro: fondo #0B0E1F y superficies #131838/#1A2050 (azul marino muy oscuro, tono de #06096F).
-Contraste: texto #F5F5F5 sobre fondo oscuro (>15:1), burbuja del usuario blanco sobre #234488/#046DB4 (≥5:1),
-flecha de envío #06096F sobre naranja (≈7:1). Los enlaces usan un tinte claro de #046DB4 porque el original sobre oscuro no llega a 4.5:1.
+Paleta oficial Coca-Cola: #F40009 (Rojo Spencerian original) · #B80007 (Rojo carmesí profundo) · #FF2A32 (Rojo brillante)
+· #FFFFFF (Blanco clásico Dynamic Ribbon) · #0D0D0F / #17171B / #222228 (Negro carbón y grafito ejecutivo).
+Contraste: texto #F5F5F7 sobre fondo carbón (>15:1), burbuja del usuario blanco #FFFFFF sobre rojo Coca-Cola #B80007/#F40009 (≥5:1),
+flecha de envío #FFFFFF sobre botón rojo Coca-Cola. Enlaces en coral claro #FF6B72 para cumplir ≥4.5:1 sobre fondo oscuro.
 """
 from __future__ import annotations
 
@@ -18,19 +18,22 @@ from .config import BASE, settings
 
 log = logging.getLogger("campusguia")
 
-ORANGE, ORANGE2 = "#FF5100", "#FF7D00"
-NAVY, BLUE, BRAND = "#06096F", "#046DB4", "#234488"
-PURPLE, INK, GRAY, SOFT, WHITE = "#6E306F", "#363636", "#8B8B8B", "#F5F5F5", "#FFFFFF"
-BG, SURFACE, SURFACE2, LINE, LINK = "#0B0E1F", "#131838", "#1A2050", "rgba(255,255,255,.10)", "#6DB6F0"
+COKE_RED, COKE_RED2 = "#F40009", "#FF2A32"
+CRIMSON, RED_ACCENT, BRAND = "#B80007", "#F40009", "#8A0005"
+DARK_RED, INK, GRAY, SOFT, WHITE = "#5C0003", "#1E1E22", "#A0A0A8", "#F5F5F7", "#FFFFFF"
+BG, SURFACE, SURFACE2, LINE, LINK = "#0D0D0F", "#17171B", "#222228", "rgba(255,255,255,.12)", "#FF6B72"
 
-SALUDO = "Hola, soy **GTU GUÍA**. Escribe tu duda sobre trámites o servicios del campus y te respondo al instante."
-LEGAL = ("GTU GUÍA es una guía de apoyo: confirma los trámites importantes con la oficina responsable. "
-         "Tus preguntas se procesan con un servicio de IA de un tercero; no escribas datos personales ni de salud. "
+SALUDO = (
+    "Hola, soy **COCA-COLA GUÍA**. Escribe tu duda sobre trámites, políticas, beneficios o servicios corporativos "
+    "de Coca-Cola y te respondo al instante."
+)
+LEGAL = ("COCA-COLA GUÍA es una guía corporativa de apoyo: confirma los trámites importantes con el área responsable. "
+         "Tus preguntas se procesan con un servicio de IA de un tercero; no escribas datos personales, confidenciales ni de salud. "
          "Para que el servicio llegue a toda la comunidad, cada persona tiene un límite diario de consultas con IA. "
-         "En una emergencia sigue los protocolos oficiales del campus.")
+         "En una emergencia sigue los protocolos oficiales de Seguridad Industrial de Coca-Cola.")
 MSG_RITMO = ("Estás enviando consultas muy rápido. Para que el servicio funcione bien para todas las personas, "
              "espera un minuto antes de continuar. ¡Gracias por tu paciencia!")
-INFO_FALLBACK = "**GTU CAMPUS HERMOSILLO**\nGrupo Tecnológico Universitario"
+INFO_FALLBACK = "**COCA-COLA CORPORATIVO**\nThe Coca-Cola Company · México"
 N_EJEMPLOS = 4
 
 
@@ -47,50 +50,50 @@ THEME = gr.themes.Base(
     "background_fill_primary": BG, "background_fill_secondary": SURFACE,
     "block_background_fill": "transparent", "block_border_color": "transparent", "block_border_width": "0px",
     "block_shadow": "none", "block_label_text_color": GRAY, "block_title_text_color": SOFT,
-    "panel_background_fill": SURFACE, "border_color_primary": "rgba(255,255,255,.10)",
-    "input_background_fill": SURFACE, "input_border_color": "rgba(255,255,255,.10)", "input_border_color_focus": ORANGE2,
+    "panel_background_fill": SURFACE, "border_color_primary": "rgba(255,255,255,.12)",
+    "input_background_fill": SURFACE, "input_border_color": "rgba(255,255,255,.12)", "input_border_color_focus": COKE_RED2,
     "input_placeholder_color": GRAY,
-    "button_primary_background_fill": ORANGE, "button_primary_background_fill_hover": ORANGE2,
-    "button_primary_text_color": NAVY, "button_primary_border_color": ORANGE,
+    "button_primary_background_fill": COKE_RED, "button_primary_background_fill_hover": COKE_RED2,
+    "button_primary_text_color": WHITE, "button_primary_border_color": COKE_RED,
     "button_secondary_background_fill": SURFACE, "button_secondary_background_fill_hover": SURFACE2,
-    "button_secondary_text_color": SOFT, "button_secondary_border_color": "rgba(255,255,255,.10)",
+    "button_secondary_text_color": SOFT, "button_secondary_border_color": "rgba(255,255,255,.12)",
     "link_text_color": LINK,
 }))
 
 CSS = f"""
 body, .gradio-container {{
-  background: radial-gradient(900px 480px at 0% -8%, rgba(35,68,136,.50), transparent 60%),
-              radial-gradient(700px 420px at 100% -5%, rgba(255,81,0,.15), transparent 60%), {BG} !important; }}
+  background: radial-gradient(900px 480px at 0% -8%, rgba(244,0,9,.28), transparent 60%),
+              radial-gradient(700px 420px at 100% -5%, rgba(184,0,7,.18), transparent 60%), {BG} !important; }}
 .gradio-container {{ max-width: 760px !important; margin: 0 auto !important; padding: 0 12px !important; }}
 footer {{ display:none !important; }}
 
 #top {{ align-items:center !important; flex-wrap:nowrap !important; gap:.5rem; padding:.9rem 0 .8rem; position:relative;
   border-bottom:1px solid {LINE}; }}
-#top::after {{ content:""; position:absolute; left:0; bottom:-1px; width:104px; height:2px;
-  background:linear-gradient(90deg,{ORANGE},{ORANGE2}); }}
+#top::after {{ content:""; position:absolute; left:0; bottom:-1px; width:120px; height:3px;
+  background:linear-gradient(90deg,{COKE_RED},{COKE_RED2}); border-radius:2px; }}
 #brand {{ display:flex; align-items:center; gap:.9rem; }}
-#brand img {{ height:44px; width:auto; }}
+#brand img {{ height:46px; width:auto; }}
 #brand .t {{ display:flex; flex-direction:column; line-height:1.15; }}
-#brand .t b {{ font-size:1.3rem; letter-spacing:.09em; color:{SOFT}; }}
-#brand .t b i {{ font-style:normal; color:{ORANGE2}; }}
+#brand .t b {{ font-size:1.3rem; letter-spacing:.08em; color:{WHITE}; }}
+#brand .t b i {{ font-style:normal; color:{COKE_RED2}; }}
 #brand .t span {{ font-size:.8rem; color:{GRAY}; }}
 
 #info-btn {{ flex:0 0 40px !important; min-width:40px !important; width:40px !important; height:40px; padding:0 !important;
-  border-radius:50% !important; background:transparent !important; color:{SOFT} !important;
+  border-radius:50% !important; background:transparent !important; color:{WHITE} !important;
   border:1px solid rgba(255,255,255,.25) !important; font:italic 700 1.05rem Georgia, serif !important; }}
-#info-btn:hover {{ border-color:{ORANGE2} !important; color:{ORANGE2} !important; }}
+#info-btn:hover {{ border-color:{COKE_RED2} !important; color:{COKE_RED2} !important; background:rgba(244,0,9,.10) !important; }}
 #info-panel {{ position:fixed; top:74px; right:14px; z-index:100; width:min(92vw,340px); padding:1rem 1.15rem !important;
-  background:{SURFACE2} !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:16px;
-  box-shadow:0 18px 50px rgba(0,0,0,.6); }}
+  background:{SURFACE2} !important; border:1px solid rgba(244,0,9,.35) !important; border-radius:16px;
+  box-shadow:0 18px 50px rgba(0,0,0,.7); }}
 #info-panel, #info-panel * {{ color:{SOFT}; font-size:.92rem; line-height:1.5; }}
 #info-panel a {{ color:{LINK}; }}
 
 #chat {{ border:0 !important; background:transparent !important; }}
 /* El scroll del chat vive en .bubble-wrap: se le da aire a la derecha y una barra fina y discreta. */
-#chat .bubble-wrap {{ padding:18px 16px 18px 4px !important; scrollbar-width:thin; scrollbar-color:{BRAND} transparent; }}
+#chat .bubble-wrap {{ padding:18px 16px 18px 4px !important; scrollbar-width:thin; scrollbar-color:{COKE_RED} transparent; }}
 #chat .bubble-wrap::-webkit-scrollbar {{ width:8px; }}
 #chat .bubble-wrap::-webkit-scrollbar-track {{ background:transparent; }}
-#chat .bubble-wrap::-webkit-scrollbar-thumb {{ background:{BRAND}; border-radius:8px; }}
+#chat .bubble-wrap::-webkit-scrollbar-thumb {{ background:{COKE_RED}; border-radius:8px; }}
 /* Sin barra de herramientas del chat (limpiar / copiar todo / compartir): cada visita ya es una conversación nueva. */
 #chat .icon-button-wrapper, #chat .icon-buttons {{ display:none !important; }}
 #chat .message-buttons {{ display:none !important; }}
@@ -98,9 +101,9 @@ footer {{ display:none !important; }}
 /* UN solo marco por mensaje (.message.bot / .message.user) con relleno propio: el marco queda más grande que el texto.
    El elemento interior [data-testid] y .message-content NO llevan borde, fondo ni relleno, para que no se dupliquen. */
 #chat .message.bot, #chat .message.user {{ padding:14px 20px !important; line-height:1.6; }}
-#chat .message.bot {{ background:{SURFACE} !important; border:1px solid {LINE} !important; border-left:3px solid {ORANGE2} !important;
+#chat .message.bot {{ background:{SURFACE} !important; border:1px solid {LINE} !important; border-left:3px solid {COKE_RED} !important;
   border-radius:6px 20px 20px 20px !important; box-shadow:none !important; }}
-#chat .message.user {{ background:linear-gradient(135deg,{BRAND},{BLUE}) !important; border:0 !important;
+#chat .message.user {{ background:linear-gradient(135deg,{CRIMSON},{COKE_RED}) !important; border:0 !important;
   border-radius:20px 20px 6px 20px !important; box-shadow:none !important; }}
 #chat [data-testid="bot"], #chat [data-testid="user"] {{ background:transparent !important; border:0 !important; box-shadow:none !important;
   padding:0 !important; margin:0 !important; border-radius:0 !important; }}
@@ -115,31 +118,31 @@ footer {{ display:none !important; }}
 #chips {{ flex-wrap:wrap !important; gap:.5rem !important; }}
 .chip {{ flex:0 1 auto !important; min-width:0 !important; border-radius:999px !important; background:rgba(255,255,255,.04) !important;
   border:1px solid rgba(255,255,255,.16) !important; color:{SOFT} !important; font-size:.9rem !important; padding:.45rem .95rem !important; }}
-.chip:hover {{ border-color:{ORANGE2} !important; background:rgba(255,125,0,.10) !important; }}
+.chip:hover {{ border-color:{COKE_RED2} !important; background:rgba(244,0,9,.14) !important; color:{WHITE} !important; }}
 
 #report-row {{ align-items:center !important; gap:.75rem; }}
-#report-btn {{ flex:0 0 auto !important; border-radius:999px !important; background:transparent !important; color:{ORANGE2} !important;
-  border:1px solid {ORANGE2} !important; font-size:.9rem !important; }}
-#report-btn:hover {{ background:rgba(255,125,0,.12) !important; }}
+#report-btn {{ flex:0 0 auto !important; border-radius:999px !important; background:transparent !important; color:{COKE_RED2} !important;
+  border:1px solid {COKE_RED2} !important; font-size:.9rem !important; }}
+#report-btn:hover {{ background:rgba(244,0,9,.14) !important; }}
 #report-note {{ font-size:.8rem; color:{GRAY}; }}
 
-#msg {{ background:{SURFACE} !important; border:1px solid rgba(255,255,255,.14) !important; border-radius:28px !important; padding:.25rem .4rem .25rem 1rem !important; }}
+#msg {{ background:{SURFACE} !important; border:1px solid rgba(255,255,255,.16) !important; border-radius:28px !important; padding:.25rem .4rem .25rem 1rem !important; }}
 #msg {{ --input-border-color-focus: rgba(255,255,255,.38); --input-shadow-focus: none; }}
-/* Sin marco naranja al escribir: el único indicador de foco es un borde blanco más claro (accesible, discreto). */
+/* Sin marco de color al escribir: el único indicador de foco es un borde blanco más claro (accesible, discreto). */
 #msg:focus-within {{ border-color:rgba(255,255,255,.38) !important; box-shadow:none !important; }}
 #msg textarea:focus, #msg textarea:focus-visible {{ outline:none !important; box-shadow:none !important; border:0 !important; }}
 #msg button:focus-visible {{ outline:2px solid {SOFT} !important; outline-offset:2px; }}
 #msg textarea {{ background:transparent !important; border:0 !important; box-shadow:none !important; color:{SOFT} !important; font-size:1.02rem; }}
-#msg button {{ background:linear-gradient(135deg,{ORANGE},{ORANGE2}) !important; color:{NAVY} !important; border:0 !important;
+#msg button {{ background:linear-gradient(135deg,{COKE_RED},{COKE_RED2}) !important; color:{WHITE} !important; border:0 !important;
   border-radius:50% !important; min-width:42px; min-height:42px; }}
-#msg button svg {{ color:{NAVY} !important; fill:{NAVY} !important; stroke:{NAVY} !important; }}
+#msg button svg {{ color:{WHITE} !important; fill:{WHITE} !important; stroke:{WHITE} !important; }}
 
 #admin-link {{ text-align:center; font-size:.75rem; padding-bottom:.6rem; }}
 #admin-link a {{ color:{GRAY}; text-decoration:none; }}
-#admin-link a:hover {{ color:{ORANGE2}; text-decoration:underline; }}
+#admin-link a:hover {{ color:{COKE_RED2}; text-decoration:underline; }}
 #uso, #legal {{ font-size:.78rem; color:{GRAY}; text-align:center; }}
 #uso p, #legal p {{ color:{GRAY}; margin:.15rem 0; }}
-button:focus-visible, textarea:focus-visible, a:focus-visible {{ outline:3px solid {ORANGE2} !important; outline-offset:2px; }}
+button:focus-visible, textarea:focus-visible, a:focus-visible {{ outline:3px solid {COKE_RED2} !important; outline-offset:2px; }}
 @media (prefers-reduced-motion: reduce) {{ * {{ animation:none !important; transition:none !important; }} }}
 """
 
@@ -148,7 +151,7 @@ JS = """() => {
   document.body.classList.add('dark');
   const label = (sel, text) => { const t = setInterval(() => { const e = document.querySelector(sel);
     if (e) { e.setAttribute('aria-label', text); clearInterval(t); } }, 300); setTimeout(() => clearInterval(t), 8000); };
-  label('#info-btn', 'Información del campus');
+  label('#info-btn', 'Información corporativa de Coca-Cola');
   label('#msg button', 'Enviar pregunta');
 }"""
 
@@ -239,10 +242,10 @@ def _info_md() -> str:
 
 
 def build_ui(get_service: Callable[[], object]) -> gr.Blocks:
-    with gr.Blocks(title="GTU GUÍA · Grupo Tecnológico Universitario", analytics_enabled=False) as demo:
+    with gr.Blocks(title="COCA-COLA GUÍA · The Coca-Cola Company", analytics_enabled=False) as demo:
         with gr.Row(elem_id="top"):
-            gr.HTML('<div id="brand"><img src="/static/logo_dark.png" alt="Grupo Tecnológico Universitario">'
-                    '<div class="t"><b>GTU <i>GUÍA</i></b><span>Trámites y servicios del campus</span></div></div>')
+            gr.HTML('<div id="brand"><img src="/static/logo_dark.png" alt="The Coca-Cola Company">'
+                    '<div class="t"><b>COCA-COLA <i>GUÍA</i></b><span>Trámites, políticas y servicios corporativos</span></div></div>')
             info_btn = gr.Button("i", elem_id="info-btn", scale=0)
         with gr.Column(visible=False, elem_id="info-panel") as info_panel:
             gr.Markdown(_info_md())

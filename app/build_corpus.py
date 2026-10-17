@@ -19,9 +19,9 @@ from .index import Index, corpus_hash
 MAX_ENTRY_CHARS = 1500  # entradas más largas se recortan en el contexto del LLM
 CACHE_FILE = settings.index_path.parent / ".tags_cache.json"
 OUT_FILE = settings.index_path.parent / "tags_sugeridos.txt"
-TAG_SYSTEM = ("Eres un indexador de trámites universitarios. Responde SOLO con 8 a 12 palabras clave en español, "
-              "minúsculas, sin acentos, separadas por comas, que un estudiante o profesor escribiría para buscar "
-              "esto. Incluye sinónimos coloquiales.")
+TAG_SYSTEM = ("Eres un indexador de trámites y servicios corporativos de Coca-Cola. Responde SOLO con 8 a 12 palabras clave "
+              "en español, minúsculas, sin acentos, separadas por comas, que un colaborador, proveedor o usuario escribiría "
+              "para buscar esto. Incluye sinónimos coloquiales.")
 
 
 def sugerir_tags(entries, limite: int, todas: bool) -> None:

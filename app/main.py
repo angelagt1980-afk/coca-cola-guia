@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="GTU GUÍA", version="2.0", lifespan=lifespan)
+app = FastAPI(title="COCA-COLA GUÍA", version="2.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 _fails: dict[str, deque] = defaultdict(deque)
 
@@ -64,7 +64,7 @@ async def security_headers(request: Request, call_next):
 
 class ConsultaIn(BaseModel):
     texto: str = Field(min_length=1, max_length=settings.max_query_chars)
-    perfil: Literal["estudiante", "profesor", "todos"] = "todos"
+    perfil: Literal["colaborador", "proveedor", "cliente", "estudiante", "profesor", "todos"] = "todos"
 
 
 class FeedbackIn(BaseModel):

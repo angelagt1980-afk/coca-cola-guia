@@ -30,8 +30,8 @@ MAX_CORPUS_CHARS = 400_000
 ADMIN_CSS = """
 .gradio-container { max-width: 1000px !important; }
 #editor textarea, #propuesta textarea, #propuesta2 textarea { font-family: ui-monospace, Menlo, Consolas, monospace !important; font-size: .85rem !important; }
-#admin-title { font-size:1.15rem; letter-spacing:.06em; color:#F5F5F5; padding:.9rem 0 .5rem; border-bottom:1px solid rgba(255,255,255,.1); }
-#admin-title b { color:#FF7D00; }
+#admin-title { font-size:1.15rem; letter-spacing:.06em; color:#F5F5F7; padding:.9rem 0 .5rem; border-bottom:1px solid rgba(255,255,255,.12); }
+#admin-title b { color:#F40009; }
 """
 
 
@@ -274,8 +274,8 @@ def build_admin_ui(get_service: Callable, s: Settings = settings) -> gr.Blocks:
         except PermissionError as e:
             raise gr.Error(str(e)) from e
 
-    with gr.Blocks(title="GTU GUÍA · Administración", analytics_enabled=False) as demo:
-        gr.HTML('<div id="admin-title"><b>GTU GUÍA</b> · Administración</div>')
+    with gr.Blocks(title="COCA-COLA GUÍA · Administración", analytics_enabled=False) as demo:
+        gr.HTML('<div id="admin-title"><b>COCA-COLA GUÍA</b> · Administración Corporativa</div>')
         token_state = gr.State("")
         with gr.Column() as login_box:
             tok = gr.Textbox(label="Token de administración", type="password", max_length=200)

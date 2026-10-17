@@ -71,8 +71,8 @@ class Settings:
     id_salt: str = field(default_factory=lambda: _env("ID_SALT", "cambia-esto"))
     emergency_text: str = field(default_factory=lambda: _env(
         "EMERGENCY_TEXT",
-        "Si es una emergencia, llama al 911 o al contacto de emergencias oficial del campus. "
-        "Esta herramienta no atiende emergencias."))
+        "Si es una emergencia en planta, almacén u oficinas, llama al 911 o al contacto de Seguridad Industrial "
+        "y Protección Civil de Coca-Cola. Esta herramienta no atiende emergencias."))
 
 
 settings = Settings()

@@ -3,31 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CampusGuía</title>
+  <title>Coca-Cola Guía · Asistente Corporativo</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <a class="skip" href="#pregunta">Ir al campo de pregunta</a>
   <header>
-    <h1>CampusGuía</h1>
-    <p>Pregunta sobre trámites y servicios del campus.</p>
+    <h1>Coca-Cola Guía</h1>
+    <p>Pregunta sobre trámites, políticas, beneficios y servicios corporativos de Coca-Cola.</p>
   </header>
   <main>
-    <p class="aviso" role="note">CampusGuía es una guía de apoyo. Para trámites importantes confirma la información con la oficina responsable.
-      Tus preguntas se procesan con un servicio de IA de un tercero: no escribas datos personales ni de salud.
-      En una emergencia sigue los protocolos oficiales del campus.</p>
+    <p class="aviso" role="note">Coca-Cola Guía es un asistente de apoyo corporativo. Para trámites importantes confirma la información con el área responsable.
+      Tus preguntas se procesan con un servicio de IA de un tercero: no escribas datos personales, confidenciales ni de salud.
+      En una emergencia sigue los protocolos oficiales de Seguridad Industrial de Coca-Cola.</p>
 
     <div id="chat" role="log" aria-live="polite" aria-label="Conversación"></div>
 
     <form id="form" autocomplete="off">
       <label for="perfil">Soy</label>
       <select id="perfil">
-        <option value="todos">Otro / prefiero no decir</option>
-        <option value="estudiante">Estudiante</option>
-        <option value="profesor">Profesor</option>
+        <option value="todos">General / prefiero no decir</option>
+        <option value="colaborador">Colaborador</option>
+        <option value="proveedor">Proveedor / Distribuidor</option>
       </select>
       <label for="pregunta">Tu pregunta</label>
-      <textarea id="pregunta" rows="2" maxlength="300" placeholder="Ejemplo: ¿Dónde entrego mis documentos de inscripción?" required></textarea>
+      <textarea id="pregunta" rows="2" maxlength="300" placeholder="Ejemplo: ¿Dónde entrego mis documentos de contratación?" required></textarea>
       <div class="row">
         <button type="submit" id="enviar">Preguntar</button>
         <span id="uso" aria-live="off"></span>

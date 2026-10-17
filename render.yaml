@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: campusguia
+    name: coca-cola-guia
     runtime: python
     plan: free            # verifica los límites vigentes del plan
     buildCommand: pip install -r requirements.txt && python -m app.build_corpus --check

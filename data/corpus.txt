@@ -1,177 +1,178 @@
 // =====================================================================
-// CORPUS DE GTU GUÍA
-// La entrada 'gtu-campus-hermosillo' es REAL. Las demás son ejemplos FICTICIOS: reemplázalas por las reales.
+// CORPUS DE COCA-COLA GUÍA · ASISTENTE CORPORATIVO
+// Catálogo de trámites, políticas, beneficios y servicios de The Coca-Cola Company.
 // PREGUNTA (opcional): pregunta modelo que aparece como ejemplo en el chat; los temas más consultados salen primero.
 // Cada entrada empieza con "### id-en-minusculas". Copia data/plantilla_entrada.txt.
 // Después de editar:  python -m app.build_corpus   y haz commit.
 // =====================================================================
 
-### servicios-escolares
-TITULO: Servicios Escolares
-PUESTO: Coordinación de Servicios Escolares
+### recursos-humanos
+TITULO: Recursos Humanos y Atención al Colaborador
+PUESTO: Dirección de Capital Humano Coca-Cola
 CATEGORIA: tramites
-AUDIENCIA: estudiante
-TAGS: inscripcion, reinscripcion, credencial, constancia, kardex, historial academico, baja, boleta, documentos, titulo, certificado
-RESPONSABLE: Mtra. Laura Pérez (ejemplo)
-CORREO: servicios.escolares@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 101
-UBICACION: Planta baja, a la derecha de la entrada principal, junto a la cafetería
+AUDIENCIA: colaborador
+TAGS: contratacion, ingreso, reinscripcion, inscripcion, credencial, gafete, constancia, kardex, historial laboral, baja, recibo de nomina, documentos, contrato, certificado
+RESPONSABLE: Lic. Laura Pérez (ejemplo)
+CORREO: capital.humano@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 101
+UBICACION: Planta baja, a la derecha de la recepción principal, junto al comedor
 HORARIO: Lunes a viernes, 9:00 a 15:00
 ACTUALIZADO: 2026-08-15
-PREGUNTA: ¿Dónde entrego mis documentos de inscripción?
+PREGUNTA: ¿Dónde entrego mis documentos de contratación?
 --
-Aquí se hacen la inscripción, la reinscripción, las constancias de estudios, el kardex y la baja temporal o definitiva.
-Para inscribirte lleva: identificación oficial, comprobante de pago y acta de nacimiento.
-La credencial de estudiante se entrega con tu comprobante de inscripción. Puede haber fila los primeros días del semestre.
+Aquí se gestionan la contratación de nuevo ingreso, la emisión de gafete corporativo, las constancias laborales, el historial de puesto y las bajas o permisos especiales.
+Para tu contratación entrega: identificación oficial vigente, comprobante de domicilio, constancia fiscal y acta de nacimiento.
+El gafete de colaborador se entrega con tu comprobante de ingreso. Puede haber mayor flujo los lunes por integraciones de nuevo ingreso.
 
-### becas
-TITULO: Becas y Apoyos Económicos
-PUESTO: Departamento de Becas
+### beneficios-prestaciones
+TITULO: Beneficios, Prestaciones y Apoyos al Colaborador
+PUESTO: Coordinación de Compensaciones y Beneficios Coca-Cola
 CATEGORIA: tramites
-AUDIENCIA: estudiante
-TAGS: beca, becas, apoyo economico, descuento, convocatoria, promedio, manutencion, solicitud de beca
+AUDIENCIA: colaborador
+TAGS: beneficio, beneficios, prestaciones, beca, becas, apoyo economico, descuento, convocatoria, fondo de ahorro, vales de despensa, seguro medico, solicitud de apoyo
 RESPONSABLE: Lic. Carlos Ruiz (ejemplo)
-CORREO: becas@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 120
-UBICACION: Planta baja, pasillo de oficinas administrativas, segunda puerta
+CORREO: beneficios@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 120
+UBICACION: Planta baja, pasillo de oficinas corporativas, segunda puerta
 HORARIO: Lunes a viernes, 10:00 a 14:00
 ACTUALIZADO: 2026-07-01
-PREGUNTA: ¿Cómo solicito una beca?
+PREGUNTA: ¿Cómo solicito un apoyo o beneficio corporativo?
 --
-La convocatoria de becas se publica al inicio de cada semestre.
-Para solicitar una beca necesitas: solicitud llena, comprobante de ingresos, constancia con promedio y credencial vigente.
-El resultado se publica en el tablero de avisos del departamento y por correo institucional.
+La convocatoria de apoyos educativos, becas para hijos de colaboradores y beneficios flexibles se publica al inicio de cada trimestre.
+Para solicitar un apoyo o beca necesitas: solicitud firmada, comprobante de antigüedad, último recibo de nómina y gafete vigente.
+El resultado se publica en el portal interno de Capital Humano y se notifica por correo corporativo.
 
-### biblioteca
-TITULO: Biblioteca
-PUESTO: Coordinación de Biblioteca
+### centro-capacitacion
+TITULO: Centro de Capacitación y Biblioteca Coca-Cola
+PUESTO: Coordinación de Universidad Corporativa Coca-Cola
 CATEGORIA: servicios
 AUDIENCIA: todos
-TAGS: biblioteca, libros, prestamo, prestamos, cubiculos, estudio, silencio, credencial, renovar, multa, sala de lectura
-RESPONSABLE: Biblioteca Central (ejemplo)
-CORREO: biblioteca@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 140
+TAGS: capacitacion, biblioteca, libros, manuales, prestamo, prestamos, cubiculos, salas, estudio, silencio, credencial, gafete, renovar, certificacion, sala de lectura
+RESPONSABLE: Universidad Corporativa Coca-Cola (ejemplo)
+CORREO: universidad@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 140
 UBICACION: Piso 2, al salir del elevador a la izquierda
 HORARIO: Lunes a viernes, 8:00 a 20:00; sábados, 9:00 a 13:00
 ACTUALIZADO: 2026-08-20
-PREGUNTA: ¿Cuál es el horario de la biblioteca?
+PREGUNTA: ¿Cuál es el horario del centro de capacitación?
 --
-Para pedir libros prestados presenta tu credencial vigente. El préstamo es de 7 días y se puede renovar una vez.
-Hay cubículos de estudio que se reservan en el mostrador. La sala de lectura es zona de silencio.
+Para consultar manuales de operación, libros técnicos o pedir material en préstamo presenta tu gafete vigente. El préstamo es de 7 días y se puede renovar una vez.
+Hay salas y cubículos de capacitación que se reservan en el mostrador. La sala de consulta normativa es zona de silencio.
 
 ### soporte-ti
 TITULO: Soporte Técnico y Tecnologías de la Información
-PUESTO: Departamento de Tecnologías de la Información
+PUESTO: Departamento de TI y Sistemas Corporativos Coca-Cola
 CATEGORIA: tecnologia
 AUDIENCIA: todos
-TAGS: wifi, internet, red, correo institucional, contraseña, plataforma, aula virtual, cuenta, proyector, soporte, computadora
+TAGS: wifi, internet, red, correo corporativo, correo institucional, contraseña, plataforma, vpn, sap, cuenta, proyector, soporte, computadora, laptop
 RESPONSABLE: Ing. Marco Soto (ejemplo)
-CORREO: soporte.ti@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 160
-UBICACION: Piso 3, cubículo junto a los laboratorios de cómputo
+CORREO: soporte.ti@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 160
+UBICACION: Piso 3, módulo junto al centro de datos y sistemas
 HORARIO: Lunes a viernes, 8:00 a 17:00
 ACTUALIZADO: 2026-09-01
-PREGUNTA: No puedo conectarme al Wi-Fi
+PREGUNTA: No puedo conectarme al Wi-Fi corporativo
 --
-Para conectarte al Wi-Fi usa la red del campus con tu correo institucional y tu contraseña.
-Si olvidaste tu contraseña, pide el restablecimiento en soporte con tu credencial.
-Los profesores pueden pedir apoyo con proyector y equipo de aula con un día de anticipación.
+Para conectarte al Wi-Fi de la planta o corporativo usa la red interna de Coca-Cola con tu correo corporativo y tu contraseña.
+Si olvidaste tu contraseña de red, VPN o SAP, solicita el restablecimiento en soporte técnico presentando tu gafete.
+Los líderes de área pueden solicitar apoyo con pantalla, videoconferencia y proyector con un día de anticipación.
 
-### alta-profesores
-TITULO: Alta y Contratación de Profesores
-PUESTO: Coordinación Académica
+### alta-proveedores
+TITULO: Alta y Contratación de Proveedores y Distribuidores
+PUESTO: Gerencia de Abastecimiento y Compras Coca-Cola
 CATEGORIA: tramites
-AUDIENCIA: profesor
-TAGS: alta, contratacion, contrato, profesor de nuevo ingreso, docente, nomina, expediente, horario de clases, cubiculo
+AUDIENCIA: proveedor
+TAGS: alta, proveedor, distribuidor, compras, licitacion, facturacion, expediente, documentos, suministro, padron
 RESPONSABLE: Dra. Ana Torres (ejemplo)
-CORREO: coordinacion.academica@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 201
-UBICACION: Piso 3, oficina al fondo del pasillo principal
+CORREO: compras@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 201
+UBICACION: Piso 3, oficina de abastecimiento al fondo del pasillo principal
 HORARIO: Lunes a viernes, 9:00 a 16:00
 ACTUALIZADO: 2026-08-10
-PREGUNTA: ¿Qué documentos necesito para mi alta como profesor?
+PREGUNTA: ¿Qué documentos necesito para mi alta como proveedor?
 --
-Para tu alta como profesor entrega: identificación oficial, comprobante de domicilio, currículum y título o cédula.
-Con el expediente completo se firma el contrato y se asigna tu cubículo y tu horario de clases.
+Para tu alta como proveedor o distribuidor entrega: identificación oficial del representante, constancia de situación fiscal, carátula bancaria y acta constitutiva.
+Con el expediente validado se firma el acuerdo de suministro y se asigna tu cuenta en el portal de facturación y tu ventana de recepción.
 
-### calificaciones-profesores
-TITULO: Captura de Calificaciones y Actas
-PUESTO: Coordinación Académica
+### control-calidad
+TITULO: Captura de Indicadores de Calidad y Auditorías
+PUESTO: Gerencia de Aseguramiento de Calidad e Inocuidad
 CATEGORIA: tramites
-AUDIENCIA: profesor
-TAGS: calificaciones, actas, captura, evaluacion, fechas limite, lista de asistencia, asistencia, plataforma
+AUDIENCIA: colaborador
+TAGS: calidad, indicadores, calificaciones, actas, captura, evaluacion, fechas limite, bitacora, auditoria, inocuidad, lote, plataforma
 RESPONSABLE: Dra. Ana Torres (ejemplo)
-CORREO: coordinacion.academica@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 202
-UBICACION: Piso 3, oficina al fondo del pasillo principal
+CORREO: calidad@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 202
+UBICACION: Piso 3, laboratorio de control de calidad junto a planta
 HORARIO: Lunes a viernes, 9:00 a 16:00
 ACTUALIZADO: 2025-01-10
-PREGUNTA: ¿Cómo capturo las calificaciones?
+PREGUNTA: ¿Cómo capturo los indicadores de calidad?
 --
-Las calificaciones se capturan en la plataforma académica dentro del periodo marcado en el calendario.
-Después se imprime y firma el acta y se entrega en Coordinación Académica.
-La asistencia mínima para tener derecho a examen la define el reglamento de evaluación.
+Los indicadores de calidad y liberación de lote se capturan en la plataforma operativa dentro del periodo marcado en el calendario mensual.
+Después se imprime y firma el acta de auditoría y se entrega en Aseguramiento de Calidad.
+El cumplimiento mínimo de normas de inocuidad para liberar producto lo define el manual global de calidad de The Coca-Cola Company.
 
-### servicio-social
-TITULO: Servicio Social
-PUESTO: Departamento de Vinculación
+### voluntariado-sostenibilidad
+TITULO: Voluntariado Corporativo y Sostenibilidad (Mundo Sin Residuos)
+PUESTO: Gerencia de Asuntos Públicos, Comunicación y Sostenibilidad
 CATEGORIA: tramites
-AUDIENCIA: estudiante
-TAGS: servicio social, practicas profesionales, liberacion, horas, vinculacion, carta de presentacion
+AUDIENCIA: colaborador
+TAGS: voluntariado, sostenibilidad, servicio social, reciclaje, mundo sin residuos, liberacion, horas, vinculacion, carta de participacion, comunidad
 RESPONSABLE: Lic. Elena Mora (ejemplo)
-CORREO: vinculacion@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 130
+CORREO: sostenibilidad@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 130
 UBICACION: Piso 1, junto a la escalera principal
 HORARIO: Lunes a viernes, 9:00 a 14:00
 ACTUALIZADO: 2026-06-15
-PREGUNTA: ¿Cómo inicio mi servicio social?
+PREGUNTA: ¿Cómo participo en el voluntariado corporativo?
 --
-Puedes iniciar el servicio social al cubrir el porcentaje de créditos que marca el reglamento.
-Pasos: registrar el proyecto, pedir la carta de presentación, cumplir las horas y entregar los reportes para la liberación.
+Puedes participar en las brigadas de reciclaje, reforestación e hidratación comunitaria del programa Mundo Sin Residuos como parte de tu compromiso social en Coca-Cola.
+Pasos: registrar tu brigada en el portal, solicitar la carta de participación, cumplir las horas de jornada y entregar el reporte de impacto para tu constancia.
 
-### apoyo-psicopedagogico
-TITULO: Apoyo Psicopedagógico e Inclusión
-PUESTO: Unidad de Tutorías e Inclusión
+### salud-ocupacional
+TITULO: Salud Ocupacional, Ergonomía e Inclusión Laboral
+PUESTO: Unidad de Bienestar Integral e Inclusión Coca-Cola
 CATEGORIA: apoyo
 AUDIENCIA: todos
-TAGS: tutoria, tutorias, inclusion, discapacidad, autismo, ajustes razonables, apoyo, psicopedagogico, accesibilidad, elevador
-RESPONSABLE: Unidad de Tutorías e Inclusión (ejemplo)
-CORREO: inclusion@ejemplo.edu.mx
-TELEFONO: 662 000 0001 ext. 150
-UBICACION: Piso 1, oficina junto al elevador
+TAGS: salud ocupacional, ergonomia, tutoria, inclusion, discapacidad, ajustes razonables, apoyo, bienestar, accesibilidad, elevador, seguridad industrial
+RESPONSABLE: Unidad de Bienestar Integral e Inclusión (ejemplo)
+CORREO: bienestar@coca-cola.ejemplo.com
+TELEFONO: 55 5262 6000 ext. 150
+UBICACION: Piso 1, consultorio preventivo junto al elevador
 HORARIO: Lunes a viernes, 9:00 a 17:00
 ACTUALIZADO: 2026-08-25
-PREGUNTA: ¿Dónde pido apoyo de tutoría o inclusión?
+PREGUNTA: ¿Dónde pido apoyo de ergonomía o inclusión laboral?
 --
-La unidad acompaña a estudiantes y profesores con necesidades de apoyo y coordina ajustes razonables en clase.
-Puedes pedir una cita por correo o acudir directamente. El elevador del edificio está junto a esta oficina.
-Este servicio informa y canaliza; no sustituye atención médica o psicológica especializada.
+La unidad acompaña a colaboradores y proveedores con necesidades de accesibilidad y coordina ajustes ergonómicos o razonables en oficinas y planta.
+Puedes agendar una cita por correo o acudir directamente. El elevador del edificio corporativo está junto a esta oficina.
+Este servicio orienta y canaliza; no sustituye atención médica o psicológica especializada de urgencia.
 
-### cafeteria
-TITULO: Cafetería
-PUESTO: Concesión de Cafetería
+### comedor-corporativo
+TITULO: Comedor Corporativo y Zona de Hidratación
+PUESTO: Administración de Servicios al Personal Coca-Cola
 CATEGORIA: servicios
 AUDIENCIA: todos
-TAGS: cafeteria, comida, comedor, desayuno, cafe, comer, menu
-UBICACION: Planta baja, junto a Servicios Escolares
+TAGS: comedor, cafeteria, comida, desayuno, cafe, comer, menu, hidratacion, bebidas, coca-cola
+UBICACION: Planta baja, junto a Recursos Humanos
 HORARIO: Lunes a viernes, 7:30 a 17:00
 ACTUALIZADO: 2026-08-15
 --
-Hay desayunos y comidas. Se paga en caja al entrar. Puede haber más gente entre 13:00 y 15:00.
+Hay desayunos, comidas balanceadas y barra de hidratación con productos del portafolio Coca-Cola. Se registra el acceso con gafete al entrar. Puede haber más afluencia entre 13:00 y 15:00.
 
-### gtu-campus-hermosillo
-TITULO: GTU Campus Hermosillo
-PUESTO: Grupo Tecnológico Universitario
+### coca-cola-corporativo
+TITULO: Corporativo Coca-Cola México
+PUESTO: The Coca-Cola Company · Sede Corporativa y Atención al Consumidor
 CATEGORIA: informacion
 AUDIENCIA: todos
-TAGS: direccion, domicilio, ubicacion del campus, donde queda, como llegar, telefono, correo, contacto, pagina web, sitio web, hermosillo, colonia san benito, campus
-CORREO: vroman.tuc@gmail.com
-TELEFONO: 662 336 6626
-UBICACION: Calle Veracruz No. 235, Colonia San Benito, entre Calle De La Reforma y Calle Guadalupe Victoria, Hermosillo, Sonora, C.P. 83190
-WEB: https://gtuhermosillo.com/
-ACTUALIZADO: 2026-10-11
-PREGUNTA: ¿Cuál es la dirección del campus?
+TAGS: direccion, domicilio, ubicacion del corporativo, ubicacion del campus, donde queda, como llegar, telefono, correo, contacto, pagina web, sitio web, ciudad de mexico, chapultepec, corporativo, coca-cola
+CORREO: contacto@coca-cola.com
+TELEFONO: 800 704 4400
+UBICACION: Rubén Darío No. 115, Colonia Bosque de Chapultepec, Miguel Hidalgo, Ciudad de México, C.P. 11580
+HORARIO: Lunes a viernes, 8:30 a 18:00
+WEB: https://www.coca-cola.com/mx/es
+ACTUALIZADO: 2026-10-15
+PREGUNTA: ¿Cuál es la dirección del corporativo Coca-Cola?
 --
-GTU Campus Hermosillo es parte del Grupo Tecnológico Universitario.
-Está en Calle Veracruz No. 235, Colonia San Benito, entre Calle De La Reforma y Calle Guadalupe Victoria, en Hermosillo, Sonora, C.P. 83190.
-Para dudas generales puedes llamar por teléfono o escribir al correo que aparece en esta ficha.
+El Corporativo de The Coca-Cola Company en México coordina las operaciones estratégicas, atención al consumidor y relación con socios embotelladores.
+Está en Rubén Darío No. 115, Colonia Bosque de Chapultepec, Miguel Hidalgo, en la Ciudad de México, C.P. 11580.
+Para dudas generales de colaboradores, proveedores o consumidores puedes llamar por teléfono o consultar el sitio web oficial que aparece en esta ficha.

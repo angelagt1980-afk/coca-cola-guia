@@ -15,11 +15,11 @@ _PATTERNS = {
 _COMPILED = {k: re.compile(v) for k, v in _PATTERNS.items()}
 
 MENSAJES = {
-    "salud": "No puedo dar orientación médica. Para temas de salud acude al servicio médico del campus "
-             "o a un profesional de la salud.",
-    "legal": "No puedo dar asesoría legal. Consulta al área jurídica de la institución o a un profesional.",
+    "salud": "No puedo dar orientación médica. Para temas de salud acude al Servicio Médico de Planta / Salud Ocupacional "
+             "de Coca-Cola o a un profesional de la salud.",
+    "legal": "No puedo dar asesoría legal. Consulta al área Jurídica y de Cumplimiento (Compliance) de Coca-Cola o a un profesional.",
     "psico": "No puedo dar orientación psicológica. Hay personas que pueden acompañarte; "
-             "acude al servicio de apoyo del campus o a un profesional.",
+             "acude al programa de Bienestar Integral de Coca-Cola o a un profesional.",
 }
 
 

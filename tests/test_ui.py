@@ -10,9 +10,9 @@ def test_escape_neutraliza_markdown_y_html():
 
 
 def test_format_reply_incluye_ficha_y_fuentes(cfg):
-    d = Service(cfg).responder("horario biblioteca", "todos", "ip", "c")
+    d = Service(cfg).responder("horario capacitacion", "todos", "ip", "c")
     md = ui.format_reply(d)
-    assert "**Biblioteca**" in md and "**Horario:**" in md and "8:00 a 20:00" in md and "**Teléfono:**" in md
+    assert "**Centro de Capacitación y Biblioteca Coca-Cola**" in md and "**Horario:**" in md and "8:00 a 20:00" in md and "**Teléfono:**" in md
 
 
 def test_format_reply_escapa_contenido_malicioso():
@@ -23,8 +23,8 @@ def test_format_reply_escapa_contenido_malicioso():
 
 
 def test_handle_conversacion(cfg):
-    hist, _, sin = ui.handle("¿Cómo solicito una beca?", [], "cid", "1.2.3.4", Service(cfg))
-    assert [m["role"] for m in hist] == ["user", "assistant"] and "Becas" in hist[1]["content"] and sin == ""
+    hist, _, sin = ui.handle("¿Cómo solicito un apoyo o beneficio corporativo?", [], "cid", "1.2.3.4", Service(cfg))
+    assert [m["role"] for m in hist] == ["user", "assistant"] and "Beneficios" in hist[1]["content"] and sin == ""
 
 
 def test_handle_sin_informacion_marca_pregunta_para_informar(cfg):
@@ -67,14 +67,14 @@ def test_evento_de_envio_streaming_y_seguimiento(cfg):
     s = Service(cfg)
     demo = ui.build_ui(lambda: s)
     send = _fn(demo, 4, 8)
-    ev = list(send.fn("horario de la biblioteca", [], None, None, None))
+    ev = list(send.fn("horario del centro de capacitacion", [], None, None, None))
     assert len(ev[0][0]) == 1 and ev[0][0][0]["role"] == "user"          # la pregunta aparece de inmediato
     hist, caja, _uso, cid, chips, report, sin, ent = ev[-1]
     assert [m["role"] for m in hist] == ["user", "assistant"] and "8:00 a 20:00" in hist[-1]["content"]
-    assert caja == "" and cid and sin == "" and ent == "biblioteca"
+    assert caja == "" and cid and sin == "" and ent == "centro-capacitacion"
     assert chips["visible"] is False and report["visible"] is False       # tras preguntar se ocultan los ejemplos
     h2 = list(send.fn("¿y el teléfono?", hist, cid, ent, None))[-1][0]    # seguimiento con el tema recordado
-    assert "662 000 0001 ext. 140" in h2[-1]["content"]
+    assert "55 5262 6000 ext. 140" in h2[-1]["content"]
     ev3 = list(send.fn("cuanto cuesta un vuelo a Paris", h2, cid, ent, None))[-1]
     assert ev3[5]["visible"] is True and ev3[6].startswith("cuanto cuesta")  # aparece el botón de informe
 
@@ -84,19 +84,19 @@ def test_handle_stream_va_escribiendo_la_respuesta(cfg):
 
     def sf(s_, system, user, mx):
         yield "delta", "Entrega tus documentos en "
-        yield "delta", "Servicios Escolares [servicios-escolares]."
+        yield "delta", "Recursos Humanos [recursos-humanos]."
         yield "usage", (700, 60)
     s = Service(cfg, stream_fn=sf)
-    ev = list(ui.handle_stream("¿Cómo entrego mis documentos de inscripción en el edificio?", [], "c", "ip", s))
+    ev = list(ui.handle_stream("¿Cómo entrego mis documentos de contratación en el edificio?", [], "c", "ip", s))
     assert [e[4] for e in ev] == [False, False, False, True]
     assert ev[1][0][-1]["content"] == "Entrega tus documentos en "
     assert "[" not in ev[2][0][-1]["content"].replace("\\[", "")        # sin marcadores de cita a medio escribir
-    assert ev[-1][3] == "servicios-escolares" and "Fuentes" not in ev[-1][0][-1]["content"]
+    assert ev[-1][3] == "recursos-humanos" and "Fuentes" not in ev[-1][0][-1]["content"]
 
 
 def test_parcial_quita_marcadores_incompletos():
-    assert ui._parcial("Ve a Servicios [servicios-esc") == "Ve a Servicios"
-    assert ui._parcial("Dato [becas]. Otro") == "Dato. Otro"
+    assert ui._parcial("Ve a Recursos [recursos-hum") == "Ve a Recursos"
+    assert ui._parcial("Dato [beneficios-prestaciones]. Otro") == "Dato. Otro"
 
 
 def test_boton_de_informe_registra_y_se_oculta(cfg):
@@ -114,11 +114,11 @@ def test_ejemplos_cargados_al_abrir(cfg):
     load = next(f for f in demo.fns.values() if len(f.inputs) == 0 and len(f.outputs) == ui.N_EJEMPLOS)
     ups = load.fn()
     assert len(ups) == ui.N_EJEMPLOS and all(u["visible"] for u in ups)
-    assert ups[0]["value"] == "¿Dónde entrego mis documentos de inscripción?"
+    assert ups[0]["value"] == "¿Dónde entrego mis documentos de contratación?"
 
 
 def test_panel_de_informacion_oculto_y_con_datos(cfg):
-    assert "Calle Veracruz No. 235" in ui._info_md() and "662 336 6626" in ui._info_md()
+    assert "Rubén Darío No. 115" in ui._info_md() and "800 704 4400" in ui._info_md()
     demo = ui.build_ui(lambda: Service(cfg))
     toggle = next(f for f in demo.fns.values() if len(f.inputs) == 1 and len(f.outputs) == 3)
     abre = toggle.fn(False)

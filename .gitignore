@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+.env
+data/.tags_cache.json
+data/propuestas.txt
+data/tags_sugeridos.txt
+*.tmp

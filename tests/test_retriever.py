@@ -9,21 +9,21 @@ def idx(cfg):
 
 
 @pytest.mark.parametrize("q,esperado", [
-    ("¿Dónde entrego mi documentación de inscripción?", "servicios-escolares"),
-    ("necesito mi kardex", "servicios-escolares"),
-    ("como pido una beca", "becas"),
+    ("¿Dónde entrego mi documentación de contratación?", "recursos-humanos"),
+    ("necesito mi historial o constancia", "recursos-humanos"),
+    ("como pido un beneficio o beca", "beneficios-prestaciones"),
     ("contraseña del wifi", "soporte-ti"),
-    ("prestamo de libros", "biblioteca"),
-    ("captura de calificaciones", "calificaciones-profesores"),
-    ("hay elevador", "apoyo-psicopedagogico"),
+    ("prestamo de manuales", "centro-capacitacion"),
+    ("captura de indicadores de calidad", "control-calidad"),
+    ("hay elevador", "salud-ocupacional"),
 ])
 def test_top1(idx, q, esperado):
     assert idx.search(q, "todos")[0].entry.id == esperado
 
 
 def test_perfil_prioriza_audiencia(idx):
-    prof = idx.search("alta contratacion", "profesor")
-    assert prof[0].entry.id == "alta-profesores"
+    prov = idx.search("alta contratacion", "proveedor")
+    assert prov[0].entry.id == "alta-proveedores"
 
 
 def test_sin_terminos_no_devuelve_nada(idx):

@@ -5,7 +5,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 
-AUDIENCIAS = {"estudiante", "profesor", "todos"}
+AUDIENCIAS = {"colaborador", "proveedor", "cliente", "estudiante", "profesor", "todos"}
 CAMPOS = {"TITULO", "PUESTO", "AUDIENCIA", "TAGS", "RESPONSABLE", "CORREO", "TELEFONO",
           "UBICACION", "HORARIO", "WEB", "ACTUALIZADO", "CATEGORIA", "PREGUNTA"}
 _ID = re.compile(r"^[a-z0-9][a-z0-9\-]{1,60}$")

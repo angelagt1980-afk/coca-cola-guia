@@ -20,7 +20,7 @@ def test_health(client):
 
 def test_home_gradio_y_logo(client):
     r = client.get("/")
-    assert r.status_code == 200 and "GTU" in r.text
+    assert r.status_code == 200 and "COCA-COLA" in r.text
     assert client.get("/static/logo.png").status_code == 200
     assert client.get("/static/logo_dark.png").status_code == 200
     assert client.get("/static/favicon.png").status_code == 200

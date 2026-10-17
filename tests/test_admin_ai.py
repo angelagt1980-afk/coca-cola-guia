@@ -5,8 +5,8 @@ import pytest
 from app import admin_ai
 from app.corpus import parse_corpus
 
-FUENTE = ("Servicio de Idiomas. Ofrece cursos de inglés y francés para estudiantes. Informes en la ventanilla 4, "
-          "teléfono 662 555 0100, correo idiomas@gtu.edu.mx. Inscripción del 1 al 15 de cada mes.")
+FUENTE = ("Servicio de Idiomas. Ofrece cursos de inglés y francés para colaboradores. Informes en la ventanilla 4, "
+          "teléfono 662 555 0100, correo idiomas@coca-cola.ejemplo.com. Inscripción del 1 al 15 de cada mes.")
 
 RESPUESTA = """### idiomas
 TITULO: Servicio de Idiomas

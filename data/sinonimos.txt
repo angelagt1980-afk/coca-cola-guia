@@ -1,16 +1,17 @@
 // Un grupo por línea: palabras que significan lo mismo para el usuario (palabras sueltas, sin acentos).
 // Se aplica solo a la consulta, no cambia los documentos. Edita a mano.
-inscripcion, inscribirme, matricula, registro, inscribir
+contratacion, contrataciones, ingreso, inscripcion, inscribirme, matricula, registro, inscribir
 credencial, identificacion, gafete, carnet
 constancia, comprobante, certificado
-kardex, historial, calificaciones, boleta
-beca, becas, apoyo, subsidio
-baja, desertar, darme
-wifi, internet, red, conexion
+kardex, historial, calificaciones, indicadores, bitacora, auditoria, boleta
+beneficio, beneficios, prestacion, prestaciones, beca, becas, apoyo, subsidio, vales, ahorro
+baja, renuncia, finiquito, desertar, darme
+wifi, internet, red, conexion, vpn
 contraseña, password, clave
-biblioteca, libros, prestamo
-profesor, docente, maestro, catedratico
-nomina, sueldo, pago
+capacitacion, biblioteca, libros, manuales, prestamo, curso, cursos
+proveedor, proveedores, distribuidor, profesor, docente, socio, contratista
+nomina, sueldo, pago, salario, facturacion
 elevador, ascensor
-cafeteria, comedor, cafe
-tutoria, asesoria, tutor
+comedor, cafeteria, comida, cafe, hidratacion, bebidas
+ergonomia, tutoria, asesoria, inclusion, bienestar
+voluntariado, sostenibilidad, reciclaje

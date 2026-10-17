@@ -150,7 +150,7 @@ def test_pantalla_de_acceso_del_panel(ad):
     assert mal[1] == gr_update_vacio() and mal[2] == "" and "inválido" in mal[3]       # no revela el panel
     bien = login.fn(cfg.admin_token, None)
     assert bien[0]["visible"] is False and bien[1]["visible"] is True and bien[2] == cfg.admin_token
-    assert "Entradas" in bien[4] and "### servicios-escolares" in bien[5]
+    assert "Entradas" in bien[4] and "### recursos-humanos" in bien[5]
     assert "Índice" in bien[6] and "Modelo de IA" in bien[7]          # memoria y configuración se cargan al entrar
     assert mal[6] == gr_update_vacio() and mal[7] == gr_update_vacio()
 

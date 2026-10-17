@@ -156,7 +156,7 @@ class Index:
                     score += best
             if matched == 0:
                 continue
-            if perfil in ("estudiante", "profesor") and "todos" not in e.audiencia and perfil not in e.audiencia:
+            if perfil and perfil != "todos" and "todos" not in e.audiencia and perfil not in e.audiencia:
                 score *= AUDIENCE_PENALTY
             hits.append(Hit(e, score, matched / len(terms)))
         hits.sort(key=lambda h: (h.score, h.coverage), reverse=True)
